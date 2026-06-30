@@ -40,7 +40,7 @@ enum AppshotsCLI {
                 try printCaptureEventsWithTimings(store: store, arguments: rest)
             } else if mode == .eventStream {
                 try printCaptureEventStream(
-                    timeoutSeconds: doubleOption(rest, name: "--timeout-seconds") ?? AppshotCaptureConfiguration.default.timeoutSeconds,
+                    timeoutSeconds: CLIOptions.double(rest, name: "--timeout-seconds") ?? AppshotCaptureConfiguration.default.timeoutSeconds,
                     arguments: rest
                 )
             } else if mode == .events {
@@ -84,14 +84,14 @@ enum AppshotsCLI {
             }
             try printRecordOutput(record, mode: outputMode(from: rest), store: store)
         case "list":
-            let limit = integerOption(rest, name: "--limit") ?? 20
+            let limit = CLIOptions.integer(rest, name: "--limit") ?? 20
             try printJSON(Array(store.allCaptures().prefix(limit)))
         case "search":
             let query = rest.filter { $0.hasPrefix("--") == false }.joined(separator: " ")
             guard query.isEmpty == false else {
                 throw CLIError(message: "Usage: appshotsctl search <query> [--limit N]", exitCode: 2)
             }
-            let limit = integerOption(rest, name: "--limit") ?? 20
+            let limit = CLIOptions.integer(rest, name: "--limit") ?? 20
             try printJSON(store.searchCaptures(query: query, limit: limit))
         case "delete":
             guard let id = rest.first else {
@@ -175,7 +175,7 @@ enum AppshotsCLI {
         // but missing its value" (a usage error). A bare `--app` must not
         // silently fall back to the frontmost app.
         if arguments.contains("--app") {
-            guard let identifier = stringOption(arguments, name: "--app") else {
+            guard let identifier = CLIOptions.string(arguments, name: "--app") else {
                 throw CLIError(message: "--app requires a bundle id or app name.", exitCode: 2)
             }
             let target = try AppshotCaptureService.resolveTarget(matching: identifier)
@@ -226,33 +226,6 @@ enum AppshotsCLI {
         return .prompt
     }
 
-    private static func integerOption(_ arguments: [String], name: String) -> Int? {
-        guard let index = arguments.firstIndex(of: name),
-              arguments.indices.contains(index + 1)
-        else {
-            return nil
-        }
-        return Int(arguments[index + 1])
-    }
-
-    private static func doubleOption(_ arguments: [String], name: String) -> Double? {
-        guard let index = arguments.firstIndex(of: name),
-              arguments.indices.contains(index + 1)
-        else {
-            return nil
-        }
-        return Double(arguments[index + 1])
-    }
-
-    private static func stringOption(_ arguments: [String], name: String) -> String? {
-        guard let index = arguments.firstIndex(of: name),
-              arguments.indices.contains(index + 1)
-        else {
-            return nil
-        }
-        return arguments[index + 1]
-    }
-
     private static func printJSON<T: Encodable>(_ value: T) throws {
         print(try AppshotJSON.string(value))
     }
@@ -292,9 +265,6 @@ enum AppshotsCLI {
             }
             timeoutState.markCompleted()
             maybeCopy(record: record, arguments: arguments)
-        } catch let error as AppshotCaptureEventError {
-            timeoutState.markCompleted()
-            throw CLIError(message: error.localizedDescription, exitCode: 1)
         } catch {
             timeoutState.markCompleted()
             throw CLIError(message: error.localizedDescription, exitCode: 1)
@@ -327,9 +297,9 @@ enum AppshotsCLI {
     }
 
     private static func runBenchmark(arguments: [String], store: AppshotStore) throws {
-        let count = integerOption(arguments, name: "--count") ?? 10
-        let warmup = integerOption(arguments, name: "--warmup") ?? 2
-        let target = try stringOption(arguments, name: "--app")
+        let count = CLIOptions.integer(arguments, name: "--count") ?? 10
+        let warmup = CLIOptions.integer(arguments, name: "--warmup") ?? 2
+        let target = try CLIOptions.string(arguments, name: "--app")
             .map(AppshotCaptureService.resolveTarget(matching:))
         guard count > 0, warmup >= 0 else {
             throw CLIError(message: "Usage: appshotsctl benchmark [--app BUNDLE_OR_NAME] [--count N] [--warmup N]", exitCode: 2)

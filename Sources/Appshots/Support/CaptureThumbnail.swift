@@ -31,9 +31,14 @@ struct CaptureThumbnail: View {
             }
         }
         .frame(width: width, height: height)
-        .modifier(BackgroundModifier(isEnabled: showsBackground))
+        .background(showsBackground ? Color.appSurfaceSubtle : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        .modifier(BorderModifier(isEnabled: showsBorder, cornerRadius: cornerRadius))
+        .overlay {
+            if showsBorder {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(Color.appBorderSubtle, lineWidth: 1)
+            }
+        }
         .clipped()
         .task(id: url) {
             guard let url else {
@@ -43,34 +48,6 @@ struct CaptureThumbnail: View {
             if let loaded = await ThumbnailCache.shared.loadThumbnail(for: url, maxPixelSize: maxPixelSize) {
                 image = loaded
             }
-        }
-    }
-}
-
-private struct BackgroundModifier: ViewModifier {
-    var isEnabled: Bool
-
-    func body(content: Content) -> some View {
-        if isEnabled {
-            content.background(Color.secondary.opacity(0.08))
-        } else {
-            content
-        }
-    }
-}
-
-private struct BorderModifier: ViewModifier {
-    var isEnabled: Bool
-    var cornerRadius: CGFloat
-
-    func body(content: Content) -> some View {
-        if isEnabled {
-            content.overlay {
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
-            }
-        } else {
-            content
         }
     }
 }

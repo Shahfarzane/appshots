@@ -120,14 +120,7 @@ private struct PermissionsSection: View {
                 }
                 .padding(.horizontal, AppshotsTheme.Spacing.md)
                 .padding(.vertical, AppshotsTheme.Spacing.xs)
-                .background {
-                    RoundedRectangle(cornerRadius: AppshotsTheme.Radius.card)
-                        .fill(Color.appSurfaceSubtle)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: AppshotsTheme.Radius.card)
-                                .strokeBorder(Color.appBorderSubtle, lineWidth: 1)
-                        }
-                }
+                .modifier(PopoverCardBackground())
             }
         }
     }

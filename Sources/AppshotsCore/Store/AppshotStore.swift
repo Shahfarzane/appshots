@@ -277,15 +277,12 @@ public struct AppshotStore: Sendable {
         let captureDiagnosticsURL = captureURL.appendingPathComponent("capture_diagnostics.json")
         let metadataURL = captureURL.appendingPathComponent("metadata.json")
 
-        let copiedScreenshotURL = try metricsRecorder?.measure("screenshot encode/write") {
+        let copiedScreenshotURL = try measure("screenshot encode/write", using: metricsRecorder) {
             try copyScreenshotIfAvailable(
                 sourcePath: metadata.screenshotPath,
                 to: screenshotURL
             )
-        } ?? copyScreenshotIfAvailable(
-            sourcePath: metadata.screenshotPath,
-            to: screenshotURL
-        )
+        }
         let copiedCaptureDiagnosticsURL = try copyCaptureDiagnosticsIfAvailable(
             sourcePath: metadata.screenshotPath,
             to: captureDiagnosticsURL
@@ -300,9 +297,9 @@ public struct AppshotStore: Sendable {
         }
         let renderedAppStateText: String
         if let storedStructuredState {
-            renderedAppStateText = metricsRecorder?.measure("AX render text") {
+            renderedAppStateText = measure("AX render text", using: metricsRecorder) {
                 AppshotSnapshotRenderer.render(state: storedStructuredState)
-            } ?? AppshotSnapshotRenderer.render(state: storedStructuredState)
+            }
         } else {
             renderedAppStateText = storedOutput.text
         }
@@ -310,9 +307,9 @@ public struct AppshotStore: Sendable {
 
         try renderedAppStateText.write(to: axTextURL, atomically: true, encoding: .utf8)
         if let storedStructuredState {
-            let data = try metricsRecorder?.measure("structured JSON encode") {
+            let data = try measure("structured JSON encode", using: metricsRecorder) {
                 try jsonEncoder().encode(storedStructuredState)
-            } ?? jsonEncoder().encode(storedStructuredState)
+            }
             try data.write(to: axJSONURL, options: .atomic)
         }
         let pageURL = extractPageURL(
@@ -330,7 +327,7 @@ public struct AppshotStore: Sendable {
         let transitionSnapshotURL = captureURL.appendingPathComponent("transition-snapshot.png")
         let transitionSnapshotPath: String?
         if let copiedScreenshotURL {
-            let render = {
+            transitionSnapshotPath = measure("transition snapshot render", using: metricsRecorder) {
                 renderTransitionSnapshot(
                     screenshotURL: copiedScreenshotURL,
                     appName: appName,
@@ -338,7 +335,6 @@ public struct AppshotStore: Sendable {
                     to: transitionSnapshotURL
                 )
             }
-            transitionSnapshotPath = metricsRecorder?.measure("transition snapshot render", render) ?? render()
         } else {
             transitionSnapshotPath = nil
         }
@@ -386,26 +382,7 @@ public struct AppshotStore: Sendable {
 
         let appshotText = modelFacingAppshotText(record: record, appStateText: renderedAppStateText)
         let debugText = codexStyleAppshotText(record: record, appStateText: renderedAppStateText)
-        if let metricsRecorder {
-            try metricsRecorder.measure("final artifact write") {
-                try appshotText.write(to: appshotTextURL, atomically: true, encoding: .utf8)
-                try debugText.write(to: debugTextURL, atomically: true, encoding: .utf8)
-                let contextData = try jsonEncoder().encode(
-                    try appshotContext(
-                        for: record,
-                        appStateText: renderedAppStateText,
-                        includeImageData: false,
-                        includeAppIconData: false
-                    )
-                )
-                try contextData.write(to: contextURL, options: .atomic)
-                try writeMetadata(record)
-            }
-            try metricsRecorder.measure("index/latest update") {
-                try updateIndex(with: record)
-                try writeLatestPointers(record: record, appshotText: appshotText)
-            }
-        } else {
+        try measure("final artifact write", using: metricsRecorder) {
             try appshotText.write(to: appshotTextURL, atomically: true, encoding: .utf8)
             try debugText.write(to: debugTextURL, atomically: true, encoding: .utf8)
             let contextData = try jsonEncoder().encode(
@@ -418,6 +395,8 @@ public struct AppshotStore: Sendable {
             )
             try contextData.write(to: contextURL, options: .atomic)
             try writeMetadata(record)
+        }
+        try measure("index/latest update", using: metricsRecorder) {
             try updateIndex(with: record)
             try writeLatestPointers(record: record, appshotText: appshotText)
         }
@@ -469,12 +448,7 @@ public struct AppshotStore: Sendable {
         }
 
         let sourceURL = URL(fileURLWithPath: sourcePath)
-        if fileManager.fileExists(atPath: destinationURL.path) {
-            try fileManager.removeItem(at: destinationURL)
-        }
-
-        try fileManager.copyItem(at: sourceURL, to: destinationURL)
-
+        try copyReplacingItem(at: sourceURL, to: destinationURL)
         return destinationURL
     }
 
@@ -491,11 +465,16 @@ public struct AppshotStore: Sendable {
             return nil
         }
 
+        try copyReplacingItem(at: sourceURL, to: destinationURL)
+        return destinationURL
+    }
+
+    /// Copies `sourceURL` to `destinationURL`, replacing any existing file there.
+    private func copyReplacingItem(at sourceURL: URL, to destinationURL: URL) throws {
         if fileManager.fileExists(atPath: destinationURL.path) {
             try fileManager.removeItem(at: destinationURL)
         }
         try fileManager.copyItem(at: sourceURL, to: destinationURL)
-        return destinationURL
     }
 
     private func decodeCaptureDiagnostics(at url: URL) throws -> AppshotCaptureDiagnostics {
@@ -667,11 +646,22 @@ public struct AppshotStore: Sendable {
         }
     }
 
+    /// Runs `body`, recording it as a timed phase when `recorder` is present and
+    /// otherwise running it untimed. Collapses the `recorder?.measure { … } ?? …`
+    /// pattern that would otherwise duplicate every measured body.
+    private func measure<T>(
+        _ name: String,
+        using recorder: AppshotCaptureMetricsRecorder?,
+        _ body: () throws -> T
+    ) rethrows -> T {
+        if let recorder {
+            return try recorder.measure(name, body)
+        }
+        return try body()
+    }
+
     private func jsonEncoder() -> JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
+        AppshotJSON.encoder
     }
 
     private func jsonDecoder() -> JSONDecoder {

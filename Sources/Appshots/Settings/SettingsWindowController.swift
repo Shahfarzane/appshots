@@ -1,6 +1,15 @@
 import AppKit
 import Luminare
+import Observation
 import SwiftUI
+
+/// Holds the selected settings destination. Mirrors the role of Loop's
+/// `SettingsWindowManager.currentTab`, kept minimal for Appshots.
+@MainActor
+@Observable
+final class SettingsWindowModel {
+    var currentTab: SettingsTab = .history
+}
 
 /// Owns the single Loop-style settings `LuminareWindow` and its lifecycle.
 /// Modeled on Loop's `SettingsWindowManager`, minus the SkyLight private-API

@@ -1,8 +1,8 @@
 import Foundation
 
-/// Tiny shared argument helpers for the hand-rolled subcommand parsers. Mirrors
-/// the `stringOption` style in `main.swift` so every command reads flags the
-/// same way.
+/// Tiny shared argument helpers for the hand-rolled subcommand parsers. The
+/// single home for value/flag lookups so `main.swift` and every command file
+/// read flags the same way.
 enum CLIOptions {
     /// The value following `name` (e.g. `--scope user` → `"user"`), or `nil`.
     static func string(_ arguments: [String], name: String) -> String? {
@@ -12,6 +12,16 @@ enum CLIOptions {
             return nil
         }
         return arguments[index + 1]
+    }
+
+    /// The integer value following `name`, or `nil` when absent or unparseable.
+    static func integer(_ arguments: [String], name: String) -> Int? {
+        string(arguments, name: name).flatMap { Int($0) }
+    }
+
+    /// The double value following `name`, or `nil` when absent or unparseable.
+    static func double(_ arguments: [String], name: String) -> Double? {
+        string(arguments, name: name).flatMap { Double($0) }
     }
 
     /// True when any of `names` is present (boolean/switch flags).

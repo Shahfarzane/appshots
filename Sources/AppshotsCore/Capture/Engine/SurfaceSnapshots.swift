@@ -55,38 +55,38 @@ extension AccessibilityCaptureEngine {
         popupMenu: PopupMenuCandidate,
         filterVisibleNodes: Bool
     ) -> RuntimeAppSnapshot? {
-            let nodes = flattenTree(
-                from: popupMenu.element,
-                focusedElement: focusedElement,
-                visibleFrame: popupMenu.frame,
-                filterVisibleNodes: filterVisibleNodes
-            )
-            let focusedIndex = focusedElement.flatMap { focused in
-                nodes.first(where: { CFEqual($0.element, focused) })?.index
-            }
-            let fingerprint = fingerprint(
-                app: app,
-                windowID: windowMatch.cgWindow.windowID,
-                windowTitle: windowMatch.title,
-                windowFrame: windowMatch.frame,
-                nodes: nodes,
-                focusedElementIndex: focusedIndex,
-                selectedText: selectedText
-            )
+        let nodes = flattenTree(
+            from: popupMenu.element,
+            focusedElement: focusedElement,
+            visibleFrame: popupMenu.frame,
+            filterVisibleNodes: filterVisibleNodes
+        )
+        let focusedIndex = focusedElement.flatMap { focused in
+            nodes.first(where: { CFEqual($0.element, focused) })?.index
+        }
+        let fingerprint = fingerprint(
+            app: app,
+            windowID: windowMatch.cgWindow.windowID,
+            windowTitle: windowMatch.title,
+            windowFrame: windowMatch.frame,
+            nodes: nodes,
+            focusedElementIndex: focusedIndex,
+            selectedText: selectedText
+        )
 
-            return RuntimeAppSnapshot(
-                app: app,
-                surfaceKind: .menu,
-                windowID: windowMatch.cgWindow.windowID,
-                windowTitle: windowMatch.title,
-                windowFrame: windowMatch.frame,
-                nodes: nodes,
-                focusedElementIndex: focusedIndex,
-                selectedText: selectedText,
-                screenshotURL: nil,
-                screenshotSize: nil,
-                fingerprint: fingerprint
-            )
+        return RuntimeAppSnapshot(
+            app: app,
+            surfaceKind: .menu,
+            windowID: windowMatch.cgWindow.windowID,
+            windowTitle: windowMatch.title,
+            windowFrame: windowMatch.frame,
+            nodes: nodes,
+            focusedElementIndex: focusedIndex,
+            selectedText: selectedText,
+            screenshotURL: nil,
+            screenshotSize: nil,
+            fingerprint: fingerprint
+        )
     }
 
     static func statusSurfaceSnapshot(

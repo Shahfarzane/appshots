@@ -26,17 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.showPermissionPanel = { [weak self] in
             self?.onboardingCoordinator.startFromUser()
         }
-        model.openOnboarding = { [weak self] in
-            self?.onboardingCoordinator.startFromUser()
-        }
         model.openSettings = { [weak self] in
             self?.settingsWindowController.show()
-        }
-        model.openHistory = { [weak self] in
-            self?.settingsWindowController.show(selecting: .history)
-        }
-        model.openMCPSettings = { [weak self] in
-            self?.settingsWindowController.show(selecting: .mcp)
         }
         model.openPreview = { [weak self] record in
             self?.previewWindowController.show(record)

@@ -73,10 +73,7 @@ final class AppshotsModel {
     @ObservationIgnored var playCaptureAnimation: ((AppshotRecord, NSImage?) -> Void)?
     @ObservationIgnored var playPendingCaptureAnimation: ((CGRect, NSImage, String, String) -> Void)?
     @ObservationIgnored var showPermissionPanel: (() -> Void)?
-    @ObservationIgnored var openOnboarding: (() -> Void)?
     @ObservationIgnored var openSettings: (() -> Void)?
-    @ObservationIgnored var openHistory: (() -> Void)?
-    @ObservationIgnored var openMCPSettings: (() -> Void)?
     @ObservationIgnored var openPreview: ((AppshotRecord) -> Void)?
     @ObservationIgnored var onTriggerKeyChange: ((Set<CGKeyCode>) -> Void)?
     /// Pauses/resumes the global hot-key monitor (e.g. while recording a new

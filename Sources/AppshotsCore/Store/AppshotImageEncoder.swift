@@ -39,16 +39,7 @@ extension AppshotStore {
     }
 
     func appIconDataURL(for record: AppshotRecord) -> String? {
-        guard record.bundleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
-              let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: record.bundleID)
-        else {
-            return nil
-        }
-
-        let icon = NSWorkspace.shared.icon(forFile: appURL.path)
-        icon.size = NSSize(width: 128, height: 128)
-        guard let tiffData = icon.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
+        guard let bitmap = appIconBitmap(forBundleID: record.bundleID),
               let pngData = bitmap.representation(using: .png, properties: [:]),
               pngData.count <= Self.maxInlineImageBytes
         else {
@@ -77,6 +68,12 @@ extension AppshotStore {
     /// by bundle identifier, since `save` renders the card before an `AppshotRecord`
     /// exists. Returns nil on any failure.
     func appIconCGImage(forBundleID bundleID: String) -> CGImage? {
+        appIconBitmap(forBundleID: bundleID)?.cgImage
+    }
+
+    /// Loads the app's icon (sized to 128x128) as a bitmap, keyed by bundle
+    /// identifier. Shared by `appIconDataURL(for:)` and `appIconCGImage(forBundleID:)`.
+    private func appIconBitmap(forBundleID bundleID: String) -> NSBitmapImageRep? {
         guard bundleID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
               let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
         else {
@@ -85,36 +82,25 @@ extension AppshotStore {
 
         let icon = NSWorkspace.shared.icon(forFile: appURL.path)
         icon.size = NSSize(width: 128, height: 128)
-        guard let tiffData = icon.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData)
-        else {
+        guard let tiffData = icon.tiffRepresentation else {
             return nil
         }
-
-        return bitmap.cgImage
+        return NSBitmapImageRep(data: tiffData)
     }
 
     func dayFolderName(for date: Date) -> String {
-        dayFormatter.string(from: date)
+        posixFormatter(dateFormat: "yyyy-MM-dd").string(from: date)
     }
 
     func timestampFolderName(for date: Date) -> String {
-        timestampFormatter.string(from: date)
+        posixFormatter(dateFormat: "HHmmss").string(from: date)
     }
 
-    private var dayFormatter: DateFormatter {
+    private func posixFormatter(dateFormat: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }
-
-    private var timestampFormatter: DateFormatter {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        formatter.dateFormat = "HHmmss"
+        formatter.dateFormat = dateFormat
         return formatter
     }
 }
