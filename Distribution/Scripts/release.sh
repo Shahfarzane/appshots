@@ -119,9 +119,20 @@ unlock_keychain() {
   log_info "identity=$CODE_SIGNING_IDENTITY team=$CODE_SIGNING_TEAM notary=$NOTARIZE_KEYCHAIN_PROFILE"
 
   security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_DB"
-  local current
-  current=$(security list-keychains -d user | sed 's/"//g' | tr '\n' ' ')
-  security list-keychains -d user -s "$KEYCHAIN_DB" $current
+  # Prepend our signing keychain to the user search list while preserving the
+  # existing keychains. zsh does NOT word-split unquoted $(...), so the old
+  # `... -s "$KEYCHAIN_DB" $current` stored the whole list as one mangled path
+  # and corrupted a real user's search list. Parse each path into an array
+  # (newline-split via ${(@f)}), drop our own to avoid duplicates, and pass the
+  # list quoted.
+  local -a existing search_list
+  existing=("${(@f)$(security list-keychains -d user | sed -E 's/^[[:space:]]*"?//; s/"?[[:space:]]*$//')}")
+  search_list=("$KEYCHAIN_DB")
+  local kc
+  for kc in "${existing[@]}"; do
+    [[ -n "$kc" && "$kc" != "$KEYCHAIN_DB" ]] && search_list+=("$kc")
+  done
+  security list-keychains -d user -s "${search_list[@]}"
   security set-keychain-settings -t 3600 -l "$KEYCHAIN_DB"
   export CODE_SIGNING_IDENTITY CODE_SIGNING_TEAM NOTARIZE_KEYCHAIN_PROFILE KEYCHAIN_DB
 }
@@ -129,14 +140,14 @@ unlock_keychain() {
 # ----------------------------------------------------------------------------- build number (R2-stateful)
 latest_published_build() {
   local url="${PUBLIC_BASE_URL}/${RELEASE_ENVIRONMENT}/appcast.xml"
-  local tmp status build
+  local tmp http_status build
   tmp=$(mktemp)
   for _ in 1 2; do
-    status=$(curl -sSL -w "%{http_code}" "$url" -o "$tmp" 2> /dev/null || true)
-    if [[ "$status" == "200" ]]; then
+    http_status=$(curl -sSL -w "%{http_code}" "$url" -o "$tmp" 2> /dev/null || true)
+    if [[ "$http_status" == "200" ]]; then
       build=$(awk -F'[<>]' '/<sparkle:version>/{print $3; exit}' "$tmp")
       [[ "$build" =~ ^[0-9]+$ ]] && { rm -f "$tmp"; echo "$build"; return 0; }
-    elif [[ "$status" == "404" ]]; then
+    elif [[ "$http_status" == "404" ]]; then
       log_info "no existing $RELEASE_ENVIRONMENT appcast at $url; using 0" >&2
       rm -f "$tmp"; echo "0"; return 0
     fi
@@ -147,6 +158,13 @@ latest_published_build() {
 }
 
 increment_build() {
+  # Local builds can't read the published appcast (R2 not yet provisioned). Setting
+  # APPSHOTS_SKIP_BUILD_BUMP=1 keeps the build number in Version.xcconfig as-is and
+  # skips the network round-trip. CI leaves this unset, so its behavior is unchanged.
+  if [[ "${APPSHOTS_SKIP_BUILD_BUMP:-0}" == "1" ]]; then
+    log_info "APPSHOTS_SKIP_BUILD_BUMP=1 — keeping local build number $(read_project_version "$VERSION_XCCONFIG")"
+    return 0
+  fi
   log_step "auto-incrementing build number ($RELEASE_ENVIRONMENT)..."
   local latest current new
   latest=$(latest_published_build)
@@ -250,17 +268,17 @@ notarize_dmg() {
 
   log_step "submitting to notary service (profile: $NOTARIZE_KEYCHAIN_PROFILE)"
   set +e
-  local out status
+  local out rc
   out=$(xcrun notarytool submit "$dmg" --keychain-profile "$NOTARIZE_KEYCHAIN_PROFILE" --wait 2>&1)
-  status=$?
+  rc=$?
   set -e
   echo "$out"
 
-  if [[ "$status" -ne 0 ]] || ! echo "$out" | grep -q "status: Accepted"; then
+  if [[ "$rc" -ne 0 ]] || ! echo "$out" | grep -q "status: Accepted"; then
     local id
     id=$(echo "$out" | grep "id:" | head -n 1 | awk '{print $2}' || true)
     [[ -n "$id" ]] && xcrun notarytool log "$id" --keychain-profile "$NOTARIZE_KEYCHAIN_PROFILE" || true
-    die "notarization failed (exit $status)"
+    die "notarization failed (exit $rc)"
   fi
 
   log_step "stapling + validating dmg and app"
@@ -353,17 +371,17 @@ notarize_cli() {
 
   log_step "submitting standalone CLI to notary service (profile: $NOTARIZE_KEYCHAIN_PROFILE)"
   set +e
-  local out status
+  local out rc
   out=$(xcrun notarytool submit "$zip" --keychain-profile "$NOTARIZE_KEYCHAIN_PROFILE" --wait 2>&1)
-  status=$?
+  rc=$?
   set -e
   echo "$out"
 
-  if [[ "$status" -ne 0 ]] || ! echo "$out" | grep -q "status: Accepted"; then
+  if [[ "$rc" -ne 0 ]] || ! echo "$out" | grep -q "status: Accepted"; then
     local id
     id=$(echo "$out" | grep "id:" | head -n 1 | awk '{print $2}' || true)
     [[ -n "$id" ]] && xcrun notarytool log "$id" --keychain-profile "$NOTARIZE_KEYCHAIN_PROFILE" || true
-    die "standalone CLI notarization failed (exit $status)"
+    die "standalone CLI notarization failed (exit $rc)"
   fi
 
   if xcrun stapler staple "$zip" > /dev/null 2>&1; then
