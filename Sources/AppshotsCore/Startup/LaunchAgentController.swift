@@ -154,15 +154,6 @@ public struct LaunchAgentController: Sendable {
         try removePlist()
     }
 
-    /// Returns `launchctl print` output for the service, or `nil` when the agent
-    /// is not loaded / `launchctl` could not be run.
-    public func status() -> String? {
-        guard let result = try? launchctl(["print", serviceTarget]), result.exitCode == 0 else {
-            return nil
-        }
-        return result.standardOutput
-    }
-
     /// The launchd domain target for the current user's GUI session.
     public var domainTarget: String {
         "gui/\(getuid())"

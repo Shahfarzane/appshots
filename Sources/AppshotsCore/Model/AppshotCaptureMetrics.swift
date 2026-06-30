@@ -66,7 +66,6 @@ public enum AppshotCaptureSurface: String, Codable, Equatable, Sendable {
     case window
     case menu
     case status
-    case textOnly
 }
 
 public final class AppshotCaptureMetricsRecorder: @unchecked Sendable {

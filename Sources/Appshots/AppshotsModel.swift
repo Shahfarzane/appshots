@@ -235,10 +235,6 @@ final class AppshotsModel {
         }
     }
 
-    var latestCapture: AppshotRecord? {
-        recentCaptures.first
-    }
-
     func startSession() {
         do {
             try store.ensureRootDirectory()

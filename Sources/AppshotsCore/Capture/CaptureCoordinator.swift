@@ -1,15 +1,5 @@
 import Foundation
 
-public struct CaptureCoordinatorSnapshot: Codable, Equatable, Sendable {
-    public var activeRequestID: String?
-    public var lastBundleID: String?
-    public var lastPID: pid_t?
-    public var lastWindowID: Int?
-    public var lastWindowTitle: String?
-    public var lastWindowFrame: CGRect?
-    public var lastFingerprint: String?
-}
-
 public actor CaptureCoordinator {
     public static let shared = CaptureCoordinator()
 
@@ -26,11 +16,6 @@ public actor CaptureCoordinator {
             AppLog.capture.debug("capture coordinator prewarm could not create snapshot cache: \(error.localizedDescription, privacy: .public)")
         }
         BackgroundWindowCapture.prewarm()
-    }
-
-    public func prewarm(target: FrontmostAppTarget) {
-        lastTarget = target
-        AccessibilityCaptureEngine.prewarm(pid: target.pid)
     }
 
     public func prewarm(pid: pid_t) {
@@ -58,17 +43,5 @@ public actor CaptureCoordinator {
             activeRequestID = nil
         }
         lastRecord = record
-    }
-
-    public func snapshot() -> CaptureCoordinatorSnapshot {
-        CaptureCoordinatorSnapshot(
-            activeRequestID: activeRequestID,
-            lastBundleID: lastTarget?.bundleID,
-            lastPID: lastTarget?.pid,
-            lastWindowID: lastRecord?.windowID,
-            lastWindowTitle: lastRecord?.windowTitle,
-            lastWindowFrame: lastRecord?.windowFrame,
-            lastFingerprint: lastRecord?.fingerprint
-        )
     }
 }

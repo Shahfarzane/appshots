@@ -1,4 +1,3 @@
-import AppshotsCore
 import Foundation
 import ServiceManagement
 

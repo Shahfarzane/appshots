@@ -41,14 +41,6 @@ class HostingWindowController: NSObject {
         return window
     }
 
-    /// Create the window if needed, center it, and bring it to the front.
-    func show() {
-        let window = ensureWindow()
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
-
     func makeWindow() -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: contentSize),

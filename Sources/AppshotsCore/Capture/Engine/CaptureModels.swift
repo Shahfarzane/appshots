@@ -91,26 +91,17 @@ struct WindowSelection {
 }
 
 public struct WindowCaptureTarget: Sendable {
-    public var appName: String
-    public var bundleID: String
-    public var pid: pid_t
     public var surface: AppshotCaptureSurface
     public var windowID: Int
     public var windowTitle: String
     public var windowFrame: CGRect
 
     public init(
-        appName: String,
-        bundleID: String,
-        pid: pid_t,
         surface: AppshotCaptureSurface,
         windowID: Int,
         windowTitle: String,
         windowFrame: CGRect
     ) {
-        self.appName = appName
-        self.bundleID = bundleID
-        self.pid = pid
         self.surface = surface
         self.windowID = windowID
         self.windowTitle = windowTitle
@@ -127,47 +118,6 @@ public struct ScreenshotCaptureResult: Sendable {
         self.windowID = windowID
         self.url = url
         self.size = size
-    }
-}
-
-public struct AXCaptureResult: Sendable {
-    public var nodeCount: Int
-    public var focusedElementIndex: Int?
-    public var selectedTextLength: Int
-
-    public init(nodeCount: Int, focusedElementIndex: Int?, selectedTextLength: Int) {
-        self.nodeCount = nodeCount
-        self.focusedElementIndex = focusedElementIndex
-        self.selectedTextLength = selectedTextLength
-    }
-}
-
-public struct PendingAppshot: Sendable {
-    public var requestID: String
-    public var target: WindowCaptureTarget?
-    public var screenshot: ScreenshotCaptureResult?
-    public var ax: AXCaptureResult?
-
-    public init(
-        requestID: String,
-        target: WindowCaptureTarget? = nil,
-        screenshot: ScreenshotCaptureResult? = nil,
-        ax: AXCaptureResult? = nil
-    ) {
-        self.requestID = requestID
-        self.target = target
-        self.screenshot = screenshot
-        self.ax = ax
-    }
-}
-
-public struct CompletedAppshot: Sendable {
-    public var requestID: String
-    public var record: AppshotRecord
-
-    public init(requestID: String, record: AppshotRecord) {
-        self.requestID = requestID
-        self.record = record
     }
 }
 

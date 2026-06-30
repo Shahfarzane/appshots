@@ -2,54 +2,6 @@ import AppKit
 import ApplicationServices
 import Foundation
 
-func displayName(forAction action: String) -> String {
-    let trimmed = action.hasPrefix("AX") ? String(action.dropFirst(2)) : action
-    let noByPage = trimmed.replacingOccurrences(of: "ByPage", with: "")
-    return splitCamelCase(noByPage).joined(separator: " ")
-}
-
-func describeRole(_ role: String) -> String {
-    if role == kAXWindowRole as String {
-        return "standard window"
-    }
-    if role == kAXStaticTextRole as String {
-        return "text"
-    }
-    if role == kAXTextAreaRole as String {
-        return "text entry area"
-    }
-    return splitCamelCase(role.hasPrefix("AX") ? String(role.dropFirst(2)) : role)
-        .joined(separator: " ")
-        .lowercased()
-}
-
-func splitCamelCase(_ string: String) -> [String] {
-    guard string.isEmpty == false else {
-        return []
-    }
-
-    var words: [String] = []
-    var current = ""
-
-    for scalar in string.unicodeScalars {
-        let character = Character(scalar)
-        if current.isEmpty == false,
-           CharacterSet.uppercaseLetters.contains(scalar)
-        {
-            words.append(current)
-            current = String(character)
-        } else {
-            current.append(character)
-        }
-    }
-
-    if current.isEmpty == false {
-        words.append(current)
-    }
-
-    return words
-}
-
 func stringifyValue(_ value: Any?) -> String {
     guard let value else {
         return ""

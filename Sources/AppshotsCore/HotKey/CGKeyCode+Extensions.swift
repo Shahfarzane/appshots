@@ -1,6 +1,5 @@
 import Carbon
 import CoreGraphics
-import SwiftUI
 
 // Ported from Loop (github.com/MrKai77/Loop) — Loop/Extensions/CGKeyCode+Extensions.swift.
 // Trimmed to the modifier-key subset Appshots' trigger recorder needs.

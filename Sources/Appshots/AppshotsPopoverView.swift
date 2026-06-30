@@ -1,4 +1,3 @@
-import AppKit
 import AppshotsCore
 import SwiftUI
 
