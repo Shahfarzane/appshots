@@ -124,7 +124,7 @@ extension SnapshotCapture {
         options: CaptureOptions = .default,
         eventSink: CaptureEventSink? = nil
     ) throws -> (snapshot: RuntimeAppSnapshot, usedWindowFallback: Bool) {
-        let result = try captureSnapshotWithWindowFallback(
+        try captureSnapshotWithWindowFallback(
             appIdentifier: appIdentifier,
             windowTitle: windowTitle,
             windowID: windowID,
@@ -133,6 +133,5 @@ extension SnapshotCapture {
             filterVisibleNodes: options.filterVisibleNodes,
             eventSink: eventSink
         )
-        return result
     }
 }

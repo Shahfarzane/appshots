@@ -16,7 +16,6 @@ final class MCPSettingsViewModel {
     var lastError: String?
 
     @ObservationIgnored private let manager = ClaudeMCPRegistrar()
-    @ObservationIgnored var onEnabled: (() -> Void)?
 
     func refresh() {
         guard !isRunning else { return }
@@ -47,14 +46,6 @@ final class MCPSettingsViewModel {
             }
             await reload()
             isRunning = false
-            if lastError == nil {
-                switch status {
-                case .enabledUser, .enabledProject:
-                    onEnabled?()
-                default:
-                    break
-                }
-            }
         }
     }
 
