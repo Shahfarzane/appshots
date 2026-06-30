@@ -23,7 +23,6 @@ extension AccessibilityCaptureEngine {
                 ) {
                     return menuSurfaceSnapshot(
                         app: app,
-                        appElement: appElement,
                         windowMatch: windowMatch,
                         focusedElement: focusedElement,
                         selectedText: selectedText,
@@ -37,7 +36,6 @@ extension AccessibilityCaptureEngine {
                 activeStatusMenuItemCandidate(in: statusMenuExtras) {
                 return menuSurfaceSnapshot(
                     app: app,
-                    appElement: appElement,
                     windowMatch: windowMatch,
                     focusedElement: focusedElement,
                     selectedText: selectedText,
@@ -51,7 +49,6 @@ extension AccessibilityCaptureEngine {
 
     private static func menuSurfaceSnapshot(
         app: NSRunningApplication,
-        appElement: AXUIElement,
         windowMatch: ResolvedWindowMatch,
         focusedElement: AXUIElement?,
         selectedText: String?,

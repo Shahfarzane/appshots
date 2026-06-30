@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 protocol AXRenderableNode {
@@ -16,7 +15,6 @@ protocol AXRenderableNode {
     var selected: Bool? { get }
     var expanded: Bool? { get }
     var focused: Bool? { get }
-    var actions: [String] { get }
     var isValueSettable: Bool { get }
     var valueTypeDescription: String? { get }
     var collectionSummary: String? { get }

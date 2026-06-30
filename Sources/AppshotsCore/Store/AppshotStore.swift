@@ -1,7 +1,5 @@
-import AppKit
 import Foundation
 import ImageIO
-import UniformTypeIdentifiers
 
 public struct AppshotStore: Sendable {
     public static let transitionSnapshotDisplayWidth: Double = 232

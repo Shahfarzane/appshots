@@ -28,9 +28,6 @@ enum AppshotsTheme {
     enum Radius {
         static let thumbnail: CGFloat = 6
         static let card: CGFloat = 8
-        /// Matches Luminare's default control corner radius.
-        static let control: CGFloat = 12
-        static let panel: CGFloat = 14
     }
 
     /// Opacities used for fills and borders on non-Luminare surfaces.
@@ -42,19 +39,10 @@ enum AppshotsTheme {
         static let borderSelected: Double = 0.5
     }
 
-    /// Animation curves, mirroring Luminare's `luminareAnimation`/`…Fast`.
-    enum Motion {
-        static let standard: Animation = .smooth(duration: 0.2)
-        static let fast: Animation = .easeInOut(duration: 0.1)
-        static let toggle: Animation = .easeInOut(duration: 0.15)
-        static let flourish: Animation = .smooth(duration: 0.5)
-    }
-
     /// Window and element geometry.
     enum Size {
         static let sidebarWidth: CGFloat = 230
         static let paneWidth: CGFloat = 390
-        static let historyPaneWidth: CGFloat = 540
         static let settingsHeight: CGFloat = 620
         static let popover = CGSize(width: 400, height: 620)
         static let tabIcon: CGFloat = 22
@@ -62,7 +50,5 @@ enum AppshotsTheme {
 
         /// Recent-capture thumbnails in the popover.
         static let popoverThumbnail = CGSize(width: 52, height: 34)
-        /// History row thumbnails.
-        static let historyThumbnail = CGSize(width: 96, height: 64)
     }
 }

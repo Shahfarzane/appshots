@@ -222,9 +222,6 @@ enum AccessibilityCaptureEngine {
         }
 
         eventSink?.metadataResolved(WindowCaptureTarget(
-            appName: app.localizedName ?? app.bundleIdentifier ?? "Unknown",
-            bundleID: app.bundleIdentifier ?? "",
-            pid: app.processIdentifier,
             surface: .window,
             windowID: windowMatch.cgWindow.windowID,
             windowTitle: windowMatch.title,
@@ -244,8 +241,7 @@ enum AccessibilityCaptureEngine {
             windowID: windowMatch.cgWindow.windowID,
             windowTitle: windowMatch.title,
             windowFrame: windowMatch.frame,
-            selectedText: scan.selectedText,
-            focusedElement: scan.focusedElement
+            selectedText: scan.selectedText
         )
         let nodes: [RuntimeAXNode]
         let focusedIndex: Int?
@@ -435,7 +431,6 @@ enum AccessibilityCaptureEngine {
             var windowTitle: String
             var windowFrame: CGRect
             var selectedText: String?
-            var nodes: [RuntimeAXNode]
             var storedAt: Date
         }
 
@@ -448,8 +443,7 @@ enum AccessibilityCaptureEngine {
             windowID: Int,
             windowTitle: String,
             windowFrame: CGRect,
-            selectedText: String?,
-            focusedElement: AXUIElement?
+            selectedText: String?
         ) -> (nodes: [RuntimeAXNode], focusedElementIndex: Int?, reason: String)? {
             guard AccessibilityCaptureEngine.sameWindowAXReuseRequiresFullRecapture == false else {
                 return nil
@@ -485,7 +479,6 @@ enum AccessibilityCaptureEngine {
                     windowTitle: snapshot.windowTitle,
                     windowFrame: snapshot.windowFrame,
                     selectedText: snapshot.selectedText,
-                    nodes: snapshot.nodes,
                     storedAt: Date()
                 )
             }
@@ -501,7 +494,7 @@ enum AccessibilityCaptureEngine {
     /// that app doesn't pay the one-time cost: establishing the AX connection and the
     /// `AXEnhancedUserInterface` tree rebuild. Call this when an app becomes frontmost; by the time
     /// the user captures, the tree is warm. Idempotent and cheap once an app is already warm.
-    public static func prewarm(pid: pid_t) {
+    static func prewarm(pid: pid_t) {
         prewarmQueue.async {
             let started = DispatchTime.now()
             let appElement = AXUIElementCreateApplication(pid)

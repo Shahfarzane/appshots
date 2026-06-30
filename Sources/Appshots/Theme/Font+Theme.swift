@@ -7,8 +7,6 @@ import SwiftUI
 extension Font {
     /// Pane / window header title.
     static let appWindowTitle: Font = .title2
-    /// Section header / prominent item title.
-    static let appSectionTitle: Font = .title3
     /// Standard row label / control text.
     static let appRowLabel: Font = .callout
     /// Card / setting title.
@@ -17,10 +15,4 @@ extension Font {
     static let appCaption: Font = .caption
     /// Timestamps / fine print.
     static let appCaptionSmall: Font = .caption2
-    /// Sidebar tab label (matches Luminare's tab typography).
-    static let appSidebarTab: Font = .system(size: 12, weight: .medium)
-    /// Monospaced body for the Preview accessibility text.
-    static let appMono: Font = .system(size: 12, design: .monospaced)
-    /// Monospaced caption for the Preview "plaintext" label.
-    static let appMonoCaption: Font = .system(size: 11, weight: .medium, design: .monospaced)
 }

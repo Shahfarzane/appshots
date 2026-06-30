@@ -1,7 +1,6 @@
 import AppKit
 import AppshotsCore
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// A Codex-style "Inspect image" overlay for a single capture: a large dark
 /// surface showing the full-resolution screenshot with a zoom control, a
