@@ -125,7 +125,7 @@ appshotsctl update auto on|off|status     # Sparkle auto-update toggle
 appshotsctl onboarding status             # Accessibility + Screen Recording + onboarding state
 ```
 
-Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `mcpDefaultScope`, `mcpLastProjectDirectory`.
+Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `showInDock`, `mcpDefaultScope`, `mcpLastProjectDirectory`.
 
 Exit codes are `0` (ok), `1` (failure), and `2` (usage error / not found).
 

@@ -3,17 +3,24 @@ import AppshotsCore
 import Luminare
 import SwiftUI
 
-/// History pane: every captured appshot as a rich, selectable row — the same
-/// information the menu-bar popover shows (thumbnail, app, window title, time)
-/// plus per-item actions (open, copy, reveal, delete) and bulk select/clear.
-/// Lives in the fixed-width settings pane, so switching here never resizes the
-/// window. Reuses `AppshotsModel`'s store-backed list/delete/clear logic.
+/// History pane: every captured appshot as a Loop-style grid of screenshot
+/// thumbnails. Tapping a tile opens the Preview window; a corner checkbox (and
+/// selection ring) drives multi-select for bulk delete, and each tile keeps a
+/// context menu (open, copy, reveal, delete). App/window/time show on hover and
+/// in the Preview. Lives in the fixed-width settings pane, so switching here never
+/// resizes the window. Reuses `AppshotsModel`'s store-backed list/delete/clear.
 struct HistorySettingsView: View {
     @Environment(AppshotsModel.self) private var model
 
     @State private var captures: [AppshotRecord] = []
     @State private var selection: Set<String> = []
     @State private var showClearAllConfirmation = false
+
+    /// Fixed-size tiles, laid out as many-per-row as the fixed-width pane fits.
+    private let gridColumns = [
+        GridItem(.adaptive(minimum: HistoryTile.tileWidth, maximum: HistoryTile.tileWidth),
+                 spacing: AppshotsTheme.Spacing.sm),
+    ]
 
     var body: some View {
         LuminareForm {
@@ -44,11 +51,12 @@ struct HistorySettingsView: View {
             if captures.isEmpty {
                 emptyState
             } else {
-                LazyVStack(spacing: AppshotsTheme.Spacing.sm) {
+                LazyVGrid(columns: gridColumns, spacing: AppshotsTheme.Spacing.sm) {
                     ForEach(captures) { record in
-                        HistoryRow(
+                        HistoryTile(
                             record: record,
                             isSelected: selection.contains(record.id),
+                            hasSelection: selection.isEmpty == false,
                             toggle: { toggleSelection(record.id) },
                             open: { model.openPreview?(record) },
                             copy: { model.copyAppshotMarkup(for: record) },
@@ -116,11 +124,14 @@ struct HistorySettingsView: View {
     }
 }
 
-/// A rich history row: selection checkbox, thumbnail, app/window/time metadata,
-/// and trailing per-item actions. Clicking the body opens the Preview window.
-private struct HistoryRow: View {
+/// A single screenshot tile in the History grid. Tap opens the Preview; the
+/// corner checkbox toggles multi-selection (shown on hover, while selected, or
+/// whenever a selection is active) and a selection ring mirrors the state. The
+/// app / window / time live in the hover tooltip and the context menu's actions.
+private struct HistoryTile: View {
     var record: AppshotRecord
     var isSelected: Bool
+    var hasSelection: Bool
     var toggle: () -> Void
     var open: () -> Void
     var copy: () -> Void
@@ -129,93 +140,78 @@ private struct HistoryRow: View {
 
     @State private var isHovering = false
 
+    static let tileWidth: CGFloat = 108
+    static let tileHeight: CGFloat = 68
+    private let cornerRadius: CGFloat = AppshotsTheme.Radius.card
+
     var body: some View {
-        HStack(spacing: 12) {
-            Button(action: toggle) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16))
-                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help(isSelected ? "Deselect" : "Select")
-
-            Button(action: open) {
-                HStack(spacing: 12) {
-                    CaptureThumbnail(
-                        url: record.screenshotURL,
-                        maxPixelSize: 240,
-                        width: 92,
-                        height: 60,
-                        cornerRadius: AppshotsTheme.Radius.thumbnail,
-                        placeholderFontSize: 20,
-                        showsBackground: true,
-                        showsBorder: false
-                    )
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(record.appName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .lineLimit(1)
-                        Text(record.windowTitle.isEmpty ? "Untitled window" : record.windowTitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                        Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    Spacer(minLength: 8)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Open preview")
-
-            menu
-                .opacity(isHovering ? 1 : 0.6)
+        Button(action: open) {
+            CaptureThumbnail(
+                url: record.screenshotURL,
+                maxPixelSize: 320,
+                width: Self.tileWidth,
+                height: Self.tileHeight,
+                cornerRadius: cornerRadius,
+                placeholderFontSize: 20,
+                showsBackground: true,
+                showsBorder: false
+            )
+            .contentShape(RoundedRectangle(cornerRadius: cornerRadius))
         }
-        .padding(10)
-        .background {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(isSelected ? Color.appSurfaceSelected : Color.appSurfaceSubtle)
+        .buttonStyle(.plain)
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(isSelected ? Color.accentColor.opacity(0.12) : .clear)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: cornerRadius)
                         .strokeBorder(
-                            isSelected ? Color.appBorderSelected : Color.appBorderSubtle,
-                            lineWidth: 1
+                            isSelected ? Color.accentColor : Color.appBorderSubtle,
+                            lineWidth: isSelected ? 2 : 1
                         )
                 }
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topLeading) {
+            if isSelected || isHovering || hasSelection {
+                checkbox.padding(5)
+            }
         }
         .onHover { isHovering = $0 }
+        .help(tooltip)
         .contextMenu {
             Button("Open Preview", action: open)
             Button("Copy Appshot", action: copy)
             Button("Reveal in Finder", action: reveal)
             Divider()
+            Button(isSelected ? "Deselect" : "Select", action: toggle)
             Button("Delete", role: .destructive, action: delete)
         }
     }
 
-    private var menu: some View {
-        Menu {
-            Button("Open Preview", systemImage: "arrow.up.left.and.arrow.down.right", action: open)
-            Button("Copy Appshot", systemImage: "doc.on.doc", action: copy)
-            Button("Reveal in Finder", systemImage: "folder", action: reveal)
-            Divider()
-            Button("Delete", systemImage: "trash", role: .destructive, action: delete)
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 13, weight: .semibold))
-                .frame(width: 28, height: 28)
-                .contentShape(Rectangle())
+    private var checkbox: some View {
+        Button(action: toggle) {
+            Group {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, Color.accentColor)
+                } else {
+                    Image(systemName: "circle")
+                        .foregroundStyle(.white)
+                }
+            }
+            .font(.system(size: 17))
+            .shadow(color: .black.opacity(0.45), radius: 1.5)
+            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .foregroundStyle(.secondary)
-        .help("More actions")
+        .buttonStyle(.plain)
+        .help(isSelected ? "Deselect" : "Select")
+    }
+
+    private var tooltip: String {
+        let title = record.windowTitle.isEmpty
+            ? record.appName
+            : "\(record.appName) — \(record.windowTitle)"
+        return "\(title)\n\(record.createdAt.formatted(date: .abbreviated, time: .shortened))"
     }
 }

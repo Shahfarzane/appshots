@@ -2,155 +2,78 @@ import AppshotsCore
 import Luminare
 import SwiftUI
 
-/// Trigger-key configuration. The capture trigger is a both-sides modifier
-/// chord; users pick a preset (⌥ + ⌥, ⌘ + ⌘) or record their own via "Custom".
-/// Laid out as a vertical selectable list, after Loop's Keybinds screen.
+/// Trigger-key configuration, after Loop's Keybinds screen: the current chord is
+/// shown as key-cap chips, and a "Change" button opens a Loop-style searchable
+/// dropdown of trigger configurations (Option / Command / Shift / Control, plus
+/// "Custom…" to record any chord). The chip display and dropdown are faithful
+/// ports of Loop's `TriggerKeycorder` and `DirectionPickerView`.
 struct TriggerKeyConfigurationView: View {
     @Binding private var triggerKey: Set<CGKeyCode>
     private let onRecordingChange: (Bool) -> Void
 
-    /// The user's last custom chord, kept independent of the live `triggerKey`
-    /// so switching to a preset and back doesn't lose it.
-    @State private var customKeys: Set<CGKeyCode>
+    @State private var showPicker = false
+    /// Bumped to start the chip recorder when "Custom…" is chosen.
+    @State private var recordToken = 0
 
     init(triggerKey: Binding<Set<CGKeyCode>>, onRecordingChange: @escaping (Bool) -> Void) {
         self._triggerKey = triggerKey
         self.onRecordingChange = onRecordingChange
-        let initial = triggerKey.wrappedValue
-        let isPreset = initial == TriggerKeyMode.optionPair || initial == TriggerKeyMode.commandPair
-        self._customKeys = State(initialValue: isPreset ? [] : initial)
     }
 
-    /// The preset implied by the current live trigger.
-    private var mode: TriggerKeyMode { TriggerKeyMode(triggerKey: triggerKey) }
-
-    /// Binding the custom recorder writes through: it updates the remembered
-    /// custom chord *and* makes it the live trigger.
-    private var customBinding: Binding<Set<CGKeyCode>> {
-        Binding(
-            get: { customKeys },
-            set: { newValue in
-                customKeys = newValue
-                triggerKey = newValue
-            }
-        )
-    }
+    private var currentConfig: TriggerConfig { TriggerConfig(triggerKey: triggerKey) }
 
     var body: some View {
         LuminareSection("Trigger Key") {
-            VStack(spacing: 4) {
-                presetRow(.option)
-                presetRow(.command)
-                customRow()
-            }
-            .padding(4)
-        }
-    }
-
-    // MARK: - Rows
-
-    private func presetRow(_ rowMode: TriggerKeyMode) -> some View {
-        Button {
-            triggerKey = rowMode.keys
-        } label: {
-            row(title: rowMode.title, selected: mode == rowMode) {
-                keyPair(systemImage: rowMode.glyph)
+            TriggerKeycorder(
+                $triggerKey,
+                recordTrigger: recordToken,
+                onRequestPicker: { showPicker = true },
+                onRecordingChange: onRecordingChange
+            )
+            .luminareBorderedStates(.normal)
+            .luminarePopover(isPresented: $showPicker, arrowEdge: .bottom, shouldHideAnchor: true) {
+                TriggerConfigPickerView(current: currentConfig, onSelect: apply)
             }
         }
-        .buttonStyle(.plain)
+        .luminareBorderedStates(.none)
     }
 
-    private func customRow() -> some View {
-        row(title: "Custom", selected: mode == .custom) {
-            HStack(spacing: 6) {
-                TriggerKeycorder(customBinding, onRecordingChange: onRecordingChange)
-
-                if !customKeys.isEmpty {
-                    Button {
-                        resetCustom()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.semibold))
-                            .frame(width: 28, height: 30)
-                    }
-                    .buttonStyle(.luminare)
-                    .luminareCornerRadius(8)
-                    .fixedSize()
-                    .help("Clear the custom shortcut and reset to ⌥ + ⌥")
-                }
-            }
+    /// Applies a chosen configuration: presets write their chord directly; the
+    /// "Custom…" entry starts the chip recorder.
+    private func apply(_ config: TriggerConfig) {
+        if let keys = config.keys {
+            triggerKey = keys
+        } else {
+            recordToken += 1
         }
-    }
-
-    /// Clears the recorded custom chord and falls back to the default trigger so
-    /// capture keeps working.
-    private func resetCustom() {
-        customKeys = []
-        triggerKey = TriggerKeyMode.optionPair
-    }
-
-    /// Shared row chrome: a title on the leading edge, trailing content, and a
-    /// selection highlight (tinted fill + border) matching `LuminarePicker`.
-    private func row(
-        title: String,
-        selected: Bool,
-        @ViewBuilder trailing: () -> some View
-    ) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .foregroundStyle(.primary)
-            Spacer(minLength: 8)
-            trailing()
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .background {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.accentColor.opacity(selected ? 0.15 : 0))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.accentColor, lineWidth: selected ? 1.5 : 0)
-                )
-        }
-        .contentShape(.rect)
-        .animation(.easeOut(duration: 0.12), value: selected)
-    }
-
-    /// A both-sides modifier shown as two chip boxes joined by "+", e.g. `[⌥] + [⌥]`.
-    private func keyPair(systemImage: String) -> some View {
-        HStack(spacing: 6) {
-            keyChip(systemImage)
-            Image(systemName: "plus")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            keyChip(systemImage)
-        }
-        .fixedSize()
-    }
-
-    private func keyChip(_ systemImage: String) -> some View {
-        Image(systemName: systemImage)
-            .font(.callout)
-            .frame(width: 34, height: 30)
-            .luminareSurface()
-            .luminareCornerRadius(8)
     }
 }
 
-/// The supported trigger presets. `.custom` lets the user record any chord.
-enum TriggerKeyMode: CaseIterable, Equatable {
+// MARK: - Trigger configurations
+
+/// The trigger configurations offered by the "Change" dropdown. Presets are
+/// both-sides modifier chords; `.custom` records any chord.
+enum TriggerConfig: String, CaseIterable, Identifiable, Hashable {
     case option
     case command
+    case shift
+    case control
     case custom
+
+    var id: String { rawValue }
 
     static let optionPair: Set<CGKeyCode> = [.kVK_Option, .kVK_RightOption]
     static let commandPair: Set<CGKeyCode> = [.kVK_Command, .kVK_RightCommand]
+    static let shiftPair: Set<CGKeyCode> = [.kVK_Shift, .kVK_RightShift]
+    static let controlPair: Set<CGKeyCode> = [.kVK_Control, .kVK_RightControl]
 
-    /// Derives the preset that matches a stored trigger, falling back to `.custom`.
+    /// The configuration matching a stored trigger, falling back to `.custom`.
     init(triggerKey: Set<CGKeyCode>) {
         switch triggerKey {
         case Self.optionPair: self = .option
         case Self.commandPair: self = .command
+        case Self.shiftPair: self = .shift
+        case Self.controlPair: self = .control
         default: self = .custom
         }
     }
@@ -159,25 +82,123 @@ enum TriggerKeyMode: CaseIterable, Equatable {
         switch self {
         case .option: "Option"
         case .command: "Command"
-        case .custom: "Custom"
+        case .shift: "Shift"
+        case .control: "Control"
+        case .custom: "Custom…"
         }
     }
 
-    /// SF Symbol for the preset's modifier (presets only).
-    var glyph: String {
+    /// SF Symbol shown beside the title in the dropdown.
+    var icon: String {
         switch self {
         case .option: "option"
         case .command: "command"
-        case .custom: "ellipsis"
+        case .shift: "shift"
+        case .control: "control"
+        case .custom: "slider.horizontal.3"
         }
     }
 
-    /// The both-sides chord for a preset (empty for `.custom`).
-    var keys: Set<CGKeyCode> {
+    /// The both-sides chord for a preset, or `nil` for `.custom` (record your own).
+    var keys: Set<CGKeyCode>? {
         switch self {
         case .option: Self.optionPair
         case .command: Self.commandPair
-        case .custom: []
+        case .shift: Self.shiftPair
+        case .control: Self.controlPair
+        case .custom: nil
         }
+    }
+}
+
+/// The searchable trigger-config dropdown, ported from Loop's `DirectionPickerView`
+/// (a search field + a `PickerList` of sectioned, icon+label rows). Selecting a row
+/// commits it and dismisses the popover.
+private struct TriggerConfigPickerView: View {
+    let current: TriggerConfig
+    let onSelect: (TriggerConfig) -> Void
+
+    @State private var searchText = ""
+    @State private var searchResults: [TriggerConfig] = []
+    @FocusState private var isSearchFocused: Bool
+
+    private var sections: [PickerSection<TriggerConfig>] {
+        [PickerSection("General", [.option, .command, .shift, .control, .custom])]
+    }
+
+    private var sectionItems: [TriggerConfig] {
+        sections.flatMap(\.items)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TextField("Search…", text: $searchText)
+                .textFieldStyle(.plain)
+                .focused($isSearchFocused)
+                .padding(12)
+
+            Divider()
+
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    PickerList(
+                        selection: Binding(get: { current }, set: { onSelect($0) }),
+                        searchResults: $searchResults,
+                        proxy: proxy,
+                        sections: sections
+                    ) { config in
+                        HStack(spacing: 8) {
+                            Image(systemName: config.icon)
+                                .frame(width: 20)
+                            Text(config.title)
+                        }
+                        .padding(.horizontal, 6)
+                    }
+                    .padding(8)
+                    .luminareCornerRadius(12)
+                }
+            }
+        }
+        .frame(width: 260, height: 290)
+        .onAppear {
+            searchText = ""
+            computeSearchResults()
+            Task { @MainActor in isSearchFocused = true }
+        }
+        .onChange(of: searchText) { _, _ in computeSearchResults() }
+    }
+
+    private func computeSearchResults() {
+        guard searchText.isEmpty == false else {
+            searchResults = []
+            return
+        }
+        let key = searchText.lowercased()
+        searchResults = sectionItems
+            .compactMap { item -> (TriggerConfig, Int)? in
+                fuzzyScore(item.title, key).map { (item, $0) }
+            }
+            .sorted { $0.1 < $1.1 }
+            .map(\.0)
+    }
+
+    /// Fuzzy match score (0 = prefix, 1 = substring, 2 = subsequence), ported from
+    /// Loop's `DirectionPickerView.fuzzyScore`.
+    private func fuzzyScore(_ text: String, _ pattern: String) -> Int? {
+        let text = text.lowercased()
+        let pattern = pattern.lowercased()
+
+        if text.hasPrefix(pattern) { return 0 }
+        if text.contains(pattern) { return 1 }
+
+        var tIndex = text.startIndex
+        var pIndex = pattern.startIndex
+        while tIndex < text.endIndex, pIndex < pattern.endIndex {
+            if text[tIndex] == pattern[pIndex] {
+                pIndex = pattern.index(after: pIndex)
+            }
+            tIndex = text.index(after: tIndex)
+        }
+        return pIndex == pattern.endIndex ? 2 : nil
     }
 }

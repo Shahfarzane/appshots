@@ -5,12 +5,12 @@ attributes:
 options:
   minimumXcodeGenVersion: 2.44.0
   deploymentTarget:
-    macOS: "14.0"
+    macOS: "15.0"
   createIntermediateGroups: true
 settings:
   base:
     SWIFT_VERSION: "6.0"
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
     # Enhanced Security (hardened process). Pointer authentication is forced
     # OFF because Sparkle ships an arm64-only binary XCFramework (no arm64e
@@ -90,7 +90,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
-        LSMinimumSystemVersion: "14.0"
+        LSMinimumSystemVersion: "15.0"
         LSUIElement: true
         NSAccessibilityUsageDescription: Appshots reads the active app's accessibility tree when you capture an appshot.
         NSHighResolutionCapable: true

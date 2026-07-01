@@ -16,7 +16,8 @@ final class SettingsWindowModel {
 /// blur (Luminare's own materialized chrome stands in) and the live preview.
 ///
 /// Appshots is `LSUIElement`, so the activation policy flips to `.regular` while
-/// the window is open (matching Loop) and back to `.accessory` on close.
+/// the window is open (matching Loop) and back to the user's Dock preference
+/// (`showInDock`) on close — `.accessory` unless a Dock icon is enabled.
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let appModel: AppshotsModel
@@ -52,7 +53,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     // MARK: NSWindowDelegate
 
     func windowWillClose(_ notification: Notification) {
-        // Return to menu-bar-only once the settings window is dismissed.
-        NSApp.setActivationPolicy(.accessory)
+        // Return to the user's Dock preference once the settings window is
+        // dismissed: menu-bar-only unless a Dock icon is enabled.
+        NSApp.setActivationPolicy(appModel.showInDock ? .regular : .accessory)
     }
 }

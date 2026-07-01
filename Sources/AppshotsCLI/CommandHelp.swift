@@ -93,7 +93,7 @@ enum CommandHelp {
             Read/write the shared settings in ~/.appshots/config.json (a running GUI
             live-reloads). Keys: triggerKey, captureSound, copyOnCapture,
             onboardingCompleted, startupMode (none|gui|headless), autoUpdate,
-            mcpDefaultScope (user|project), mcpLastProjectDirectory.
+            showInDock, mcpDefaultScope (user|project), mcpLastProjectDirectory.
             """
         case "trigger":
             return """

@@ -114,10 +114,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = NSImage(
-            systemSymbolName: "camera.viewfinder",
-            accessibilityDescription: "Appshots"
-        )
+        // Template glyph matching the app icon (viewfinder + centre dot); tints
+        // for light/dark menu bars automatically.
+        let icon = NSImage(systemSymbolName: "dot.viewfinder", accessibilityDescription: "Appshots")
+        icon?.isTemplate = true
+        item.button?.image = icon
         item.button?.target = self
         item.button?.action = #selector(handleStatusItemClick(_:))
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])

@@ -3,39 +3,16 @@ import SwiftUI
 
 struct AppshotsPopoverView: View {
     @Bindable var model: AppshotsModel
-    private let updateManager = AppshotsUpdateManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppshotsTheme.Spacing.md) {
-            header
             permissionNotice
             PermissionsSection(model: model)
             RecentCapturesSection(model: model)
-            footer
         }
         .padding(AppshotsTheme.Spacing.section)
         // Fixed width, height fits the content (the popover sizes to this).
         .frame(width: AppshotsTheme.Size.popover.width, alignment: .topLeading)
-    }
-
-    private var header: some View {
-        HStack(spacing: AppshotsTheme.Spacing.md) {
-            Image(systemName: "camera.viewfinder")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: AppshotsTheme.Size.tabIcon, height: AppshotsTheme.Size.tabIcon)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Appshots")
-                    .font(.appWindowTitle)
-                Text(model.statusMessage)
-                    .font(.appCaption)
-                    .foregroundStyle(model.isCapturing ? Color.accentColor : .secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            Spacer(minLength: 0)
-        }
     }
 
     @ViewBuilder
@@ -60,35 +37,6 @@ struct AppshotsPopoverView: View {
         }
     }
 
-    private var footer: some View {
-        HStack(spacing: AppshotsTheme.Spacing.md) {
-            Button {
-                model.openSettings?()
-            } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-            .buttonStyle(.borderless)
-            .help("Open Appshots settings")
-
-            Spacer()
-
-            FooterUpdateButton(
-                state: updateManager.updateState,
-                status: updateManager.statusText,
-                action: updateManager.runPrimaryAction
-            )
-
-            Button {
-                model.quit()
-            } label: {
-                Label("Quit", systemImage: "power")
-            }
-            .buttonStyle(.borderless)
-            .help("Quit Appshots")
-        }
-        .font(.appCaption)
-        .tint(.secondary)
-    }
 }
 
 /// Accessibility / Screen Recording status, as a titled card matching the

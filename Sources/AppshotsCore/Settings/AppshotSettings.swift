@@ -37,6 +37,10 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
     /// Whether Sparkle automatically checks for and downloads updates. Defaults to `true`.
     public var autoUpdate: Bool
 
+    /// Whether the app shows a Dock icon (activation policy `.regular`). When
+    /// `false` the app runs as a menu-bar-only accessory. Defaults to `false`.
+    public var showInDock: Bool
+
     /// Default Claude MCP registration scope (`"user"` or `"project"`). Defaults to `"user"`.
     public var mcpDefaultScope: String
 
@@ -50,6 +54,7 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         onboardingCompleted: Bool = false,
         startupMode: StartupMode = .none,
         autoUpdate: Bool = true,
+        showInDock: Bool = false,
         mcpDefaultScope: String = "user",
         mcpLastProjectDirectory: String? = nil
     ) {
@@ -59,6 +64,7 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         self.onboardingCompleted = onboardingCompleted
         self.startupMode = startupMode
         self.autoUpdate = autoUpdate
+        self.showInDock = showInDock
         self.mcpDefaultScope = mcpDefaultScope
         self.mcpLastProjectDirectory = mcpLastProjectDirectory
     }
@@ -81,6 +87,7 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         onboardingCompleted = (try? container.decodeIfPresent(Bool.self, forKey: .onboardingCompleted)) ?? defaults.onboardingCompleted
         startupMode = (try? container.decodeIfPresent(StartupMode.self, forKey: .startupMode)) ?? defaults.startupMode
         autoUpdate = (try? container.decodeIfPresent(Bool.self, forKey: .autoUpdate)) ?? defaults.autoUpdate
+        showInDock = (try? container.decodeIfPresent(Bool.self, forKey: .showInDock)) ?? defaults.showInDock
         mcpDefaultScope = (try? container.decodeIfPresent(String.self, forKey: .mcpDefaultScope)) ?? defaults.mcpDefaultScope
         mcpLastProjectDirectory = (try? container.decodeIfPresent(String.self, forKey: .mcpLastProjectDirectory)) ?? defaults.mcpLastProjectDirectory
     }
@@ -156,6 +163,11 @@ public extension AppshotSettings {
             key: "autoUpdate",
             get: { String($0.autoUpdate) },
             set: { settings, raw in settings.autoUpdate = try parseBool(raw, key: "autoUpdate") }
+        ),
+        AppshotSettingKey(
+            key: "showInDock",
+            get: { String($0.showInDock) },
+            set: { settings, raw in settings.showInDock = try parseBool(raw, key: "showInDock") }
         ),
         AppshotSettingKey(
             key: "mcpDefaultScope",

@@ -20,6 +20,7 @@ struct AppshotSettingsTests {
         settings.onboardingCompleted = true
         settings.startupMode = .headless
         settings.autoUpdate = false
+        settings.showInDock = true
         settings.mcpDefaultScope = "project"
         settings.mcpLastProjectDirectory = "/tmp/project"
 
@@ -152,6 +153,7 @@ struct AppshotSettingsTests {
         #expect(loaded.copyOnCapture == true)
         // Absent fields still take their defaults.
         #expect(loaded.autoUpdate == AppshotSettings.defaults.autoUpdate)
+        #expect(loaded.showInDock == AppshotSettings.defaults.showInDock)
     }
 
     @Test func `A non-JSON file loads as full defaults`() throws {

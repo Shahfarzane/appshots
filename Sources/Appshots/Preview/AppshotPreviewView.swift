@@ -20,11 +20,13 @@ struct AppshotPreviewView: View {
     @State private var image: NSImage?
     @State private var text: String = ""
     @State private var zoom: CGFloat = 1.0
+    /// Bumping this asks the scroll view to re-fit the image to the viewport.
+    @State private var fitToken = 0
     @State private var copied = false
     @State private var saved = false
 
-    private let minZoom: CGFloat = 0.25
-    private let maxZoom: CGFloat = 4.0
+    private let minZoom: CGFloat = 0.1
+    private let maxZoom: CGFloat = 6.0
     private let zoomStep: CGFloat = 0.25
 
     var body: some View {
@@ -109,26 +111,36 @@ struct AppshotPreviewView: View {
     }
 
     private var imageView: some View {
-        GeometryReader { geo in
-            ScrollView([.horizontal, .vertical], showsIndicators: false) {
-                Group {
-                    if let image {
-                        Image(nsImage: image)
-                            .resizable()
-                            .interpolation(.high)
-                            .scaledToFit()
-                    } else {
-                        ProgressView().controlSize(.large)
-                    }
-                }
-                // Size the image to the zoom level (so zoom-out shrinks it),
-                // then keep the scroll content at least the viewport size so the
-                // shrunk image stays centered.
-                .frame(width: geo.size.width * zoom, height: geo.size.height * zoom)
-                .frame(minWidth: geo.size.width, minHeight: geo.size.height)
+        Group {
+            if let image {
+                ZoomableImageView(
+                    image: image,
+                    magnification: $zoom,
+                    fitToken: fitToken,
+                    minMagnification: minZoom,
+                    maxMagnification: maxZoom
+                )
+            } else {
+                ProgressView().controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(zoomShortcuts)
+    }
+
+    /// Zero-size, invisible buttons that give the preview standard zoom key
+    /// equivalents (⌘+/⌘=/⌘- zoom, ⌘0 fit, ⌘1 actual size).
+    private var zoomShortcuts: some View {
+        ZStack {
+            Button("") { setZoom(zoom + zoomStep) }.keyboardShortcut("+", modifiers: .command)
+            Button("") { setZoom(zoom + zoomStep) }.keyboardShortcut("=", modifiers: .command)
+            Button("") { setZoom(zoom - zoomStep) }.keyboardShortcut("-", modifiers: .command)
+            Button("") { fit() }.keyboardShortcut("0", modifiers: .command)
+            Button("") { setZoom(1.0) }.keyboardShortcut("1", modifiers: .command)
+        }
+        .opacity(0)
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
     }
 
     private var textView: some View {
@@ -164,9 +176,12 @@ struct AppshotPreviewView: View {
             }
             .disabled(zoom <= minZoom)
 
-            Text("\(Int((zoom * 100).rounded()))%")
-                .monospacedDigit()
-                .frame(width: 40)
+            Button { fit() } label: {
+                Text("\(Int((zoom * 100).rounded()))%")
+                    .monospacedDigit()
+                    .frame(width: 44)
+            }
+            .help("Fit to window")
 
             Button { setZoom(zoom + zoomStep) } label: {
                 Image(systemName: "plus")
@@ -185,6 +200,11 @@ struct AppshotPreviewView: View {
 
     private func setZoom(_ value: CGFloat) {
         zoom = min(max(value, minZoom), maxZoom)
+    }
+
+    /// Requests a re-fit of the image to the current viewport.
+    private func fit() {
+        fitToken += 1
     }
 
     private func copy() {
@@ -256,5 +276,175 @@ struct AppshotPreviewView: View {
         text = await Task.detached(priority: .utility) {
             (try? String(contentsOf: axURL, encoding: .utf8)) ?? ""
         }.value
+    }
+}
+
+// MARK: - Zoomable image (real NSScrollView magnification)
+
+/// An `NSScrollView`-backed image view with native magnification: pinch-to-zoom,
+/// scroll-to-pan, smart-magnify (double-tap), and programmatic zoom driven by the
+/// `magnification` binding (the +/- buttons and ⌘± shortcuts). `magnification`
+/// is the true scale where `1.0` == the image's natural size (100%). The image
+/// is centered when it is smaller than the viewport, and fit to the viewport on
+/// first appearance and whenever `fitToken` changes (the ⌘0 / "%" affordance).
+///
+/// This replaces the previous viewport-relative `.frame` math, which produced a
+/// fictional percentage and never actually magnified the pixels.
+private struct ZoomableImageView: NSViewRepresentable {
+    let image: NSImage
+    @Binding var magnification: CGFloat
+    let fitToken: Int
+    let minMagnification: CGFloat
+    let maxMagnification: CGFloat
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        let clipView = CenteringClipView()
+        clipView.drawsBackground = false
+        scrollView.contentView = clipView
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
+        scrollView.autohidesScrollers = true
+        scrollView.allowsMagnification = true
+        scrollView.minMagnification = minMagnification
+        scrollView.maxMagnification = maxMagnification
+        scrollView.usesPredominantAxisScrolling = false
+
+        let imageView = NSImageView()
+        imageView.imageScaling = .scaleAxesIndependently
+        imageView.image = image
+        imageView.setFrameSize(image.size)
+        scrollView.documentView = imageView
+
+        context.coordinator.scrollView = scrollView
+        context.coordinator.imageView = imageView
+
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.liveMagnifyEnded(_:)),
+            name: NSScrollView.didEndLiveMagnifyNotification,
+            object: scrollView
+        )
+
+        // Fit once the scroll view has a real size.
+        DispatchQueue.main.async { context.coordinator.fitToViewport() }
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        context.coordinator.parent = self
+
+        let coordinator = context.coordinator
+        if let imageView = coordinator.imageView, imageView.image !== image {
+            imageView.image = image
+            imageView.setFrameSize(image.size)
+            DispatchQueue.main.async { coordinator.fitToViewport() }
+        }
+
+        // A re-fit was requested (⌘0 / tapping the percentage).
+        if fitToken != coordinator.lastFitToken {
+            coordinator.lastFitToken = fitToken
+            DispatchQueue.main.async { coordinator.fitToViewport() }
+            return
+        }
+
+        // Apply an externally-driven magnification (buttons / ⌘±) without echoing
+        // it back through the binding.
+        if abs(scrollView.magnification - magnification) > 0.001 {
+            coordinator.apply(magnification: magnification, centeredAtImageMidpoint: true)
+        }
+    }
+
+    static func dismantleNSView(_ scrollView: NSScrollView, coordinator: Coordinator) {
+        NotificationCenter.default.removeObserver(
+            coordinator,
+            name: NSScrollView.didEndLiveMagnifyNotification,
+            object: scrollView
+        )
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: ZoomableImageView
+        weak var scrollView: NSScrollView?
+        weak var imageView: NSImageView?
+        var lastFitToken: Int
+        private var fitAttempts = 0
+
+        init(_ parent: ZoomableImageView) {
+            self.parent = parent
+            lastFitToken = parent.fitToken
+        }
+
+        /// Reflects a user pinch back into the SwiftUI binding once it settles.
+        @objc func liveMagnifyEnded(_ notification: Notification) {
+            guard let scrollView else { return }
+            syncBinding(scrollView.magnification)
+        }
+
+        /// Fits the whole image inside the viewport (never above 100%), centering
+        /// it. Retries a bounded number of times if the scroll view has not been
+        /// laid out yet (zero bounds) when first called.
+        func fitToViewport() {
+            guard let scrollView, let imageView, let image = imageView.image else { return }
+            let imageSize = image.size
+            guard imageSize.width > 0, imageSize.height > 0 else { return }
+
+            let viewport = scrollView.bounds.size
+            guard viewport.width > 0, viewport.height > 0 else {
+                guard fitAttempts < 10 else { return }
+                fitAttempts += 1
+                DispatchQueue.main.async { [weak self] in self?.fitToViewport() }
+                return
+            }
+            fitAttempts = 0
+
+            let fit = min(viewport.width / imageSize.width, viewport.height / imageSize.height)
+            apply(magnification: min(fit, 1.0), centeredAtImageMidpoint: true)
+        }
+
+        /// Sets the magnification (clamped), centered on the image, and syncs the binding.
+        func apply(magnification: CGFloat, centeredAtImageMidpoint: Bool) {
+            guard let scrollView, let imageView else { return }
+            let clamped = min(max(magnification, parent.minMagnification), parent.maxMagnification)
+            if centeredAtImageMidpoint {
+                let center = NSPoint(x: imageView.bounds.midX, y: imageView.bounds.midY)
+                scrollView.setMagnification(clamped, centeredAt: center)
+            } else {
+                scrollView.magnification = clamped
+            }
+            syncBinding(clamped)
+        }
+
+        /// Writes the value into the binding on the next runloop tick, so it never
+        /// mutates SwiftUI state during a view update.
+        private func syncBinding(_ value: CGFloat) {
+            guard abs(parent.magnification - value) > 0.0001 else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.parent.magnification = value
+            }
+        }
+    }
+}
+
+/// A clip view that keeps its document view centered when it is smaller than the
+/// viewport (instead of pinning it to a corner), across all magnifications.
+private final class CenteringClipView: NSClipView {
+    override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
+        var rect = super.constrainBoundsRect(proposedBounds)
+        guard let documentView else { return rect }
+
+        let docFrame = documentView.frame
+        if docFrame.width < rect.width {
+            rect.origin.x = (docFrame.width - rect.width) / 2
+        }
+        if docFrame.height < rect.height {
+            rect.origin.y = (docFrame.height - rect.height) / 2
+        }
+        return rect
     }
 }

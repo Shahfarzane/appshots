@@ -34,6 +34,10 @@ struct GeneralSettingsView: View {
                 LuminareToggle("Play a sound when you capture", isOn: $model.playsCaptureSound)
             }
 
+            LuminareSection("Options") {
+                LuminareToggle("Show in Dock", isOn: $model.showInDock)
+            }
+
             LuminareSection("Startup") {
                 LuminareToggle("Launch at Login", isOn: $model.launchAtLogin)
 
@@ -77,8 +81,8 @@ private struct PermissionComposeRow: View {
             } else {
                 Button { action() } label: {
                     Text("Grant")
-                        .padding(.horizontal, 14)
-                        .frame(height: 30)
+                        .frame(height: 32)
+                        .padding(.horizontal, 12)
                 }
                 .buttonStyle(.luminare)
                 .luminareCornerRadius(8)

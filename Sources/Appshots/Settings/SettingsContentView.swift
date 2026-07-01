@@ -15,7 +15,8 @@ struct SettingsContentView: View {
     var body: some View {
         LuminareDividedStack {
             LuminareSidebar {
-                LuminareSidebarSection("Appshots", selection: $model.currentTab, items: SettingsTab.allTabs)
+                // No app-name header at the top of the sidebar (matches Loop).
+                LuminareSidebarSection(selection: $model.currentTab, items: SettingsTab.allTabs)
             }
             .frame(width: AppshotsTheme.Size.sidebarWidth)
             .padding(.top, titleBarHeight)
