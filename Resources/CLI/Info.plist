@@ -30,7 +30,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>15.0</string>
 	<key>NSAccessibilityUsageDescription</key>
 	<string>appshotsctl reads the active app's accessibility tree when you capture an appshot.</string>
 	<key>NSScreenCaptureUsageDescription</key>

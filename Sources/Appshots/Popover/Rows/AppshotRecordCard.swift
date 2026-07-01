@@ -9,7 +9,7 @@ struct AppshotRecordCard: View {
 
     var body: some View {
         Button(action: openAction) {
-            HStack(alignment: .top, spacing: AppshotsTheme.Spacing.md) {
+            HStack(alignment: .center, spacing: AppshotsTheme.Spacing.md) {
                 CaptureThumbnail(
                     url: record.screenshotURL,
                     maxPixelSize: 160,
@@ -21,22 +21,21 @@ struct AppshotRecordCard: View {
                     showsBorder: false
                 )
 
+                // App name, plus the window title when the capture had one — no
+                // date/time (that lives in the History grid tooltip + Preview).
                 VStack(alignment: .leading, spacing: AppshotsTheme.Spacing.xxs) {
                     Text(record.appName)
                         .font(.appCardTitle)
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text(record.windowTitle.isEmpty ? "Untitled window" : record.windowTitle)
-                        .font(.appCaption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-
-                    Text(record.createdAt.formatted(date: .abbreviated, time: .shortened))
-                        .font(.appCaptionSmall)
-                        .foregroundStyle(.tertiary)
+                    if record.windowTitle.isEmpty == false {
+                        Text(record.windowTitle)
+                            .font(.appCaption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
                 }
-                .padding(.top, 1)
             }
             .padding(AppshotsTheme.Spacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)

@@ -25,8 +25,8 @@ struct MCPSettingsPane: View {
                         }
                         Button { model.refresh() } label: {
                             Text("Refresh")
-                                .padding(.horizontal, 14)
-                                .frame(height: 30)
+                                .frame(height: 32)
+                                .padding(.horizontal, 12)
                         }
                         .buttonStyle(.luminare)
                         .luminareCornerRadius(8)
@@ -47,19 +47,23 @@ struct MCPSettingsPane: View {
 
             LuminareSection("Scope") {
                 LuminareCompose {
-                    LuminarePicker(
-                        compactElements: MCPScope.allCases,
-                        selection: $model.scope
-                    ) { scope in
-                        Text(scope.displayName)
-                            .font(.callout)
-                            .frame(height: 30)
-                            .padding(.horizontal, 10)
+                    // Two Luminare buttons (like Disable/Enable), sized to fit the
+                    // row; the active scope is shown highlighted.
+                    HStack(spacing: 8) {
+                        ForEach(MCPScope.allCases, id: \.self) { scope in
+                            Button {
+                                model.scope = scope
+                            } label: {
+                                Text(scope.displayName)
+                                    .frame(height: 32)
+                                    .padding(.horizontal, 12)
+                            }
+                            .buttonStyle(.luminare(overrideIsHovering: model.scope == scope))
+                            .luminareCornerRadius(8)
                             .fixedSize()
+                            .disabled(model.isRunning)
+                        }
                     }
-                    .luminareContentSize(hasFixedHeight: true)
-                    .fixedSize()
-                    .disabled(model.isRunning)
                     .onChange(of: model.scope) { _, _ in model.refresh() }
                 } label: {
                     Text("Install for")
@@ -69,8 +73,8 @@ struct MCPSettingsPane: View {
                     LuminareCompose {
                         Button { model.chooseProjectFolder() } label: {
                             Text("Choose…")
-                                .padding(.horizontal, 14)
-                                .frame(height: 30)
+                                .frame(height: 32)
+                                .padding(.horizontal, 12)
                         }
                         .buttonStyle(.luminare)
                         .luminareCornerRadius(8)

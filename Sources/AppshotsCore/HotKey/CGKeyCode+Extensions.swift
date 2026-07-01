@@ -8,13 +8,13 @@ extension CGKeyCode {
     // Raw codes from HIToolbox's Events.h.
     public static let kVK_Escape: CGKeyCode = 0x35
     public static let kVK_Command: CGKeyCode = 0x37
-    static let kVK_Shift: CGKeyCode = 0x38
+    public static let kVK_Shift: CGKeyCode = 0x38
     public static let kVK_Option: CGKeyCode = 0x3A
-    static let kVK_Control: CGKeyCode = 0x3B
+    public static let kVK_Control: CGKeyCode = 0x3B
     public static let kVK_RightCommand: CGKeyCode = 0x36
-    static let kVK_RightShift: CGKeyCode = 0x3C
+    public static let kVK_RightShift: CGKeyCode = 0x3C
     public static let kVK_RightOption: CGKeyCode = 0x3D
-    static let kVK_RightControl: CGKeyCode = 0x3E
+    public static let kVK_RightControl: CGKeyCode = 0x3E
     static let kVK_Function: CGKeyCode = 0x3F
 
     var baseModifier: CGKeyCode {
@@ -52,7 +52,7 @@ extension CGKeyCode {
 
 extension CGKeyCode {
     // Common non-modifier keys we want to migrate/print by raw code.
-    static let kVK_Return: CGKeyCode = 0x24
+    public static let kVK_Return: CGKeyCode = 0x24
     static let kVK_Tab: CGKeyCode = 0x30
     static let kVK_Space: CGKeyCode = 0x31
     static let kVK_Delete: CGKeyCode = 0x33
@@ -63,8 +63,8 @@ extension CGKeyCode {
     static let kVK_PageDown: CGKeyCode = 0x79
     static let kVK_LeftArrow: CGKeyCode = 0x7B
     static let kVK_RightArrow: CGKeyCode = 0x7C
-    static let kVK_DownArrow: CGKeyCode = 0x7D
-    static let kVK_UpArrow: CGKeyCode = 0x7E
+    public static let kVK_DownArrow: CGKeyCode = 0x7D
+    public static let kVK_UpArrow: CGKeyCode = 0x7E
     static let kVK_ANSI_KeypadEnter: CGKeyCode = 0x4C
 
     /// The four modifiers that make up the "Hyper" key (⌃⌥⇧⌘), side-independent.

@@ -33,6 +33,18 @@ final class AppshotsModel {
             }
         }
     }
+    /// Whether the app shows a Dock icon. Persisted to `config.json` and applied
+    /// live by flipping `NSApp` between `.regular` (Dock) and `.accessory`
+    /// (menu-bar-only). A CLI write live-reloads through `applyExternalSettingsChange`.
+    var showInDock: Bool {
+        didSet {
+            guard oldValue != showInDock else { return }
+            if isApplyingExternalSettings == false {
+                persistShowInDock(showInDock)
+            }
+            applyDockVisibility()
+        }
+    }
 
     /// Bumped whenever the GUI login-item status should be re-read. Reading it
     /// inside the `launchAtLogin` / `loginItemRequiresApproval` getters
@@ -105,9 +117,27 @@ final class AppshotsModel {
         // Seed config.json from legacy UserDefaults on first run, then make it the
         // source of truth for the trigger key and capture sound.
         AppshotSettingsMigration.seedIfNeeded(store: settingsStore)
-        triggerKey = Self.triggerKey(from: settingsStore.load())
+        let settings = settingsStore.load()
+        triggerKey = Self.triggerKey(from: settings)
         playsCaptureSound = AppshotSoundPlayer.isEnabled
+        showInDock = settings.showInDock
         observeSettingsChanges()
+    }
+
+    /// Persists the Dock-visibility preference to `config.json`.
+    private func persistShowInDock(_ showInDock: Bool) {
+        do {
+            try settingsStore.mutate { $0.showInDock = showInDock }
+        } catch {
+            AppLog.store.error("failed to persist showInDock: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// Applies the current Dock-visibility preference by switching the app's
+    /// activation policy. `.regular` shows a Dock icon; `.accessory` is
+    /// menu-bar-only. Safe to call repeatedly.
+    func applyDockVisibility() {
+        NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
     }
 
     /// Reads the trigger key from a settings snapshot, mapping the persisted raw
@@ -149,6 +179,11 @@ final class AppshotsModel {
         }
         if playsCaptureSound != settings.captureSound {
             playsCaptureSound = settings.captureSound
+        }
+        if showInDock != settings.showInDock {
+            // `didSet` re-applies the activation policy live; the guard above
+            // suppresses the redundant persist back to disk.
+            showInDock = settings.showInDock
         }
 
         // A CLI `startup --gui/--headless` write reconciles the running app live.

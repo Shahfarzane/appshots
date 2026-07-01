@@ -2,138 +2,136 @@ import AppshotsCore
 import Luminare
 import SwiftUI
 
-/// Records the capture trigger, rendered as Loop-style chip boxes joined by "+".
-/// The trigger is a modifier chord with an optional regular key, e.g. `[Left ⌥]`
-/// `[Right ⌥]`, `[Hyper]`, or `[Hyper] + [S]`. The four-modifier Hyper chord
-/// (⌃⌥⇧⌘) collapses into a single `[Hyper]` chip. Click to record; Escape cancels.
+/// The trigger-key chip display + "Change" button, ported faithfully from Loop's
+/// `TriggerKeycorder` (github.com/MrKai77/Loop): a `ZStack` of the chip indicator
+/// and the "Change" button — both under `.buttonStyle(.luminare(overrideUseMainStyle:))`
+/// — with width measurement that hides "Change" when the chips would overlap it.
+///
+/// Behavior is adapted for Appshots: tapping the chips or "Change" opens the
+/// trigger-config dropdown (rather than recording directly, as Loop does). A
+/// `recordTrigger` bump (from the dropdown's "Custom…") starts recording any
+/// chord; Escape or the window resigning active cancels.
 struct TriggerKeycorder: View {
+    @Environment(\.appearsActive) private var appearsActive
+
+    let keyLimit = 5
+
     @Binding private var validCurrentKey: Set<CGKeyCode>
     @State private var selectionKey: Set<CGKeyCode>
 
     @State private var eventMonitor: LocalEventMonitor?
-    @State private var shouldShake: Bool = false
-    @State private var isActive: Bool = false
-    @State private var isHovering: Bool = false
+    @State private var shouldShake = false
+    @State private var isActive = false
 
-    /// Called with `true` when recording starts and `false` when it ends, so the
-    /// caller can pause/resume the global hot-key monitor while recording.
+    @State private var totalWidth: CGFloat = 0
+    @State private var triggerKeyIndicatorWidth: CGFloat = 0
+    @State private var changeButtonWidth: CGFloat = 0
+
+    /// Opens the trigger-config dropdown (tap on the chips / "Change").
+    private let onRequestPicker: () -> Void
+    /// Called with `true` while recording, so the caller can pause the global
+    /// hot-key monitor.
     private let onRecordingChange: (Bool) -> Void
+    /// Bumped to begin recording (from the dropdown's "Custom…" entry).
+    private let recordTrigger: Int
 
-    init(_ key: Binding<Set<CGKeyCode>>, onRecordingChange: @escaping (Bool) -> Void) {
+    private var sortedKeys: [CGKeyCode] { selectionKey.sorted() }
+
+    /// True when the chips would overlap the "Change" button, so it should hide.
+    private var shouldHideChangeButton: Bool {
+        let totalLeadingWidth = triggerKeyIndicatorWidth + 4.0
+        return (totalWidth - totalLeadingWidth) < changeButtonWidth
+    }
+
+    init(
+        _ key: Binding<Set<CGKeyCode>>,
+        recordTrigger: Int = 0,
+        onRequestPicker: @escaping () -> Void,
+        onRecordingChange: @escaping (Bool) -> Void
+    ) {
         self._validCurrentKey = key
         self._selectionKey = State(initialValue: key.wrappedValue)
+        self.recordTrigger = recordTrigger
+        self.onRequestPicker = onRequestPicker
         self.onRecordingChange = onRecordingChange
     }
 
-    /// The ordered chips to render: a Hyper token or individual modifiers first,
-    /// then any regular key.
-    private var tokens: [Token] {
-        var result: [Token] = []
-        let modifiers = selectionKey.modifiers
-        if !modifiers.isEmpty {
-            if selectionKey.isHyper {
-                result.append(.hyper)
-            } else {
-                for key in modifiers.sorted(by: Self.modifierOrder) {
-                    result.append(.modifier(key))
-                }
-            }
+    var body: some View {
+        ZStack {
+            triggerKeyIndicator
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { triggerKeyIndicatorWidth = $0 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            changeButton
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { changeButtonWidth = $0 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .opacity(shouldHideChangeButton ? 0 : 1)
         }
-        for key in selectionKey.regularKeys.sorted() {
-            result.append(.regular(key))
+        .buttonStyle(.luminare(overrideUseMainStyle: true))
+        .onGeometryChange(for: CGFloat.self, of: \.size.width) { totalWidth = $0 }
+        .onChange(of: recordTrigger) { _, _ in
+            if !isActive { startObservingKeys() }
         }
-        return result
     }
 
-    var body: some View {
-        Button {
-            toggleObserving()
-        } label: {
-            keyBoxes
+    private var triggerKeyIndicator: some View {
+        Button(action: primaryAction) {
+            if selectionKey.isEmpty {
+                Text(isActive ? "Set a trigger key…" : "None")
+                    .frame(height: 32)
+                    .padding(.horizontal, 12)
+            } else {
+                HStack(spacing: 12) {
+                    ForEach(sortedKeys, id: \.self) { key in
+                        TriggerKeycorderKeyView(key: key)
+
+                        if key != sortedKeys.last {
+                            Divider()
+                                .padding(.vertical, 1)
+                        }
+                    }
+                }
+                .frame(height: 32)
+                .padding(.horizontal, 12)
+            }
         }
-        .buttonStyle(.plain)
         .modifier(ShakeEffect(shakes: shouldShake ? 2 : 0))
         .animation(Animation.default, value: shouldShake)
-        .onHover { isHovering = $0 }
-        .onChange(of: validCurrentKey) { _, newValue in
-            if selectionKey != newValue {
-                selectionKey = newValue
-            }
+        .onChange(of: appearsActive) { _, active in
+            if !active, isActive { finishedObservingKeys(wasForced: true) }
         }
         .onDisappear {
+            // Stop recording if the view is torn down mid-record (e.g. switching
+            // settings tabs); otherwise the LocalEventMonitor leaks and silently
+            // swallows all keyboard input. `appearsActive` only covers the window
+            // going inactive, not view removal.
             if isActive { finishedObservingKeys(wasForced: true) }
         }
-        .help(isActive ? "Press the trigger keys, or Escape to cancel" : "Click to change the trigger key")
+        .onChange(of: validCurrentKey) { _, newValue in
+            if selectionKey != newValue { selectionKey = newValue }
+        }
         .fixedSize()
     }
 
-    @ViewBuilder
-    private var keyBoxes: some View {
-        HStack(spacing: 6) {
-            if tokens.isEmpty {
-                Text(isActive ? "Set a trigger key…" : "None")
-                    .padding(.horizontal, 10)
-                    .frame(height: 30)
-                    .luminareSurface(isHovering: isHovering)
-            } else {
-                ForEach(Array(tokens.enumerated()), id: \.offset) { index, token in
-                    if index > 0 {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    chip(for: token)
-                }
-            }
+    private var changeButton: some View {
+        Button(action: primaryAction) {
+            Text("Change")
+                .frame(height: 32)
+                .padding(.horizontal, 12)
         }
-        .font(.callout)
         .fixedSize()
-        .contentShape(.rect)
-        .luminareCornerRadius(8)
     }
 
-    @ViewBuilder
-    private func chip(for token: Token) -> some View {
-        switch token {
-        case .hyper:
-            chipBackground { Text("Hyper") }
-        case let .modifier(key):
-            chipBackground {
-                let side = key.isModifierOnRightSide ? "Right" : "Left"
-                let image = Image(systemName: key.modifierSystemImage ?? "exclamationmark.circle.fill")
-                Text("\(side) \(image)")
-            }
-        case let .regular(key):
-            chipBackground { Text(key.humanReadable ?? "?") }
-        }
-    }
-
-    private func chipBackground(@ViewBuilder _ label: () -> some View) -> some View {
-        label()
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .fixedSize()
-            .luminareSurface(isHovering: isHovering)
-    }
-
-    /// Sorts modifiers left-before-right, then by raw code, for stable order.
-    private static func modifierOrder(_ lhs: CGKeyCode, _ rhs: CGKeyCode) -> Bool {
-        if lhs.isModifierOnRightSide != rhs.isModifierOnRightSide {
-            return !lhs.isModifierOnRightSide
-        }
-        return lhs < rhs
-    }
-
-    // MARK: - Recording
-
-    private func toggleObserving() {
+    /// While recording, a tap cancels; otherwise it opens the config dropdown.
+    private func primaryAction() {
         if isActive {
             finishedObservingKeys(wasForced: true)
         } else {
-            startObservingKeys()
+            onRequestPicker()
         }
     }
+
+    // MARK: - Recording
 
     private func startObservingKeys() {
         selectionKey = []
@@ -147,8 +145,7 @@ struct TriggerKeycorder: View {
             }
 
             if event.type == .keyDown, !event.isARepeat {
-                // A regular (non-modifier) key completes the chord immediately:
-                // current modifiers + this key.
+                // A regular (non-modifier) key completes the chord immediately.
                 let mods = CGEventFlags(cocoaFlags: event.modifierFlags).keyCodes
                 selectionKey = mods.union([event.keyCode])
                 finishedObservingKeys()
@@ -159,8 +156,7 @@ struct TriggerKeycorder: View {
                 let keycodes = CGEventFlags(cocoaFlags: event.modifierFlags).keyCodes
                 selectionKey.formUnion(keycodes)
 
-                // All modifiers released after some were pressed → commit a
-                // modifier-only chord (e.g. Hyper on its own, or ⌥ + ⌥).
+                // All modifiers released after some were pressed → commit.
                 if keycodes.isEmpty, !selectionKey.isEmpty {
                     finishedObservingKeys()
                     return nil
@@ -174,9 +170,16 @@ struct TriggerKeycorder: View {
     }
 
     private func finishedObservingKeys(wasForced: Bool = false) {
+        var willSet = !wasForced
+
+        if selectionKey.count > keyLimit {
+            willSet = false
+            shake()
+        }
+
         isActive = false
 
-        if !wasForced, !selectionKey.isEmpty {
+        if willSet, !selectionKey.isEmpty {
             validCurrentKey = selectionKey
         } else {
             selectionKey = validCurrentKey
@@ -186,13 +189,30 @@ struct TriggerKeycorder: View {
         eventMonitor = nil
         onRecordingChange(false)
     }
+
+    private func shake() {
+        shouldShake.toggle()
+    }
 }
 
-private extension TriggerKeycorder {
-    /// One rendered chip in the recorder.
-    enum Token: Hashable {
-        case hyper
-        case modifier(CGKeyCode)
-        case regular(CGKeyCode)
+/// A single key-cap chip, ported from Loop's `TriggerKeycorderKeyView`. Modifier
+/// keys render as `Left ⌥` / `Right ⌥`; a regular key renders its glyph.
+struct TriggerKeycorderKeyView: View {
+    let key: CGKeyCode
+
+    private static let defaultIconName = "exclamationmark.circle.fill"
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let modifierImage = key.modifierSystemImage {
+                let side = key.isModifierOnRightSide ? "Right" : "Left"
+                let keyImage = Image(systemName: modifierImage)
+                Text("\(side) \(keyImage)")
+            } else {
+                Text(key.humanReadable ?? "?")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fixedSize(horizontal: true, vertical: false)
     }
 }
