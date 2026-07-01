@@ -64,8 +64,10 @@ Passing both `--headless` and `--gui` is an error (exit `2`).
 
 The two paths shouldn't run together — that would arm two observe-only hot-key
 monitors and fire the chord twice. The daemon guards against this at runtime: it
-exits cleanly if the GUI app is running or another daemon already holds
-`~/.appshots/hotkey.lock`. Conceptually, choose **one** of:
+exits cleanly outside `startupMode = headless` or if another daemon already holds
+`~/.appshots/hotkey.lock`. GUI presence alone does not make a headless-mode
+daemon yield; in headless mode the GUI does not arm its own monitor. Conceptually,
+choose **one** of:
 
 - GUI login item (app starts, hosts the hot key), or
 - headless LaunchAgent (daemon starts, hosts the hot key).
@@ -82,7 +84,7 @@ app's General settings (or remove **Appshots** under System Settings > Login
 Items).
 
 Removing the apps/binaries themselves: drag `Appshots.app` to the Trash and/or
-`brew uninstall appshotsctl`. Run `appshotsctl startup disable` **before**
-removing the CLI so the LaunchAgent plist doesn't point at a missing binary. The
-`~/.appshots/` directory (captures + `config.json`) is left in place; delete it
-manually if you want a clean slate.
+remove the standalone `appshotsctl` binary. Run `appshotsctl startup disable`
+**before** removing the CLI so the LaunchAgent plist doesn't point at a missing
+binary. The `~/.appshots/` directory (captures + `config.json`) is left in
+place; delete it manually if you want a clean slate.

@@ -6,7 +6,7 @@ CONFIG="${1:-debug}"
 VERSION_XCCONFIG="$ROOT_DIR/Sources/Appshots/Configuration/Version.xcconfig"
 MARKETING_VERSION="$(grep '^MARKETING_VERSION' "$VERSION_XCCONFIG" | sed 's/.*= *//' | tr -d '[:space:]')"
 CURRENT_PROJECT_VERSION="$(grep '^CURRENT_PROJECT_VERSION' "$VERSION_XCCONFIG" | sed 's/.*= *//' | tr -d '[:space:]')"
-SPARKLE_FEED_URL="${SPARKLE_FEED_URL:-https://persist.nerd.ceo/production/appcast.xml}"
+SPARKLE_FEED_URL="${SPARKLE_FEED_URL:-https://persist.nerd.ceo/appshots/appcast.xml}"
 
 swift build --package-path "$ROOT_DIR" -c "$CONFIG" --product Appshots
 swift build --package-path "$ROOT_DIR" -c "$CONFIG" --product appshotsctl

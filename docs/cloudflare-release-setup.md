@@ -34,20 +34,24 @@ Cloudflare). `persist.nerd.ceo` is a subdomain of it.
 
 4. **Add a Cache Rule for the mutable objects** (important for Sparkle).
    - These change every release and must not be served stale:
-     `/production/appcast.xml`, `/production/latest.txt`, `/production/latest-appshots-arm64.dmg`.
+     `/appshots/appcast.xml`, `/appshots/latest.txt`, `/appshots/latest-appshots-arm64.dmg`,
+     `/appshots/appshotsctl-latest-arm64.zip`.
    - Cloudflare **Cache Rule**: when the URI path matches those, set **Edge TTL ≈ 60s** (or Bypass).
      The versioned `*.dmg` objects are immutable and can cache long.
 
 ## Object / URL contract (do not change these paths)
 
-The pipeline writes, and the app reads, under the `production/` prefix:
+The pipeline writes, and the app reads, under the `appshots/` prefix by default
+(`RELEASE_ENVIRONMENT=appshots`):
 
 | Object key | Public URL | Purpose |
 |---|---|---|
-| `production/appcast.xml` | `https://persist.nerd.ceo/production/appcast.xml` | Sparkle feed (`SUFeedURL`); also read to compute the next build number |
-| `production/latest-appshots-arm64.dmg` | …/production/latest-appshots-arm64.dmg | stable "latest" download |
-| `production/<version>-<ts>-<sha>.dmg` | …/production/<…>.dmg | the immutable release DMG |
-| `production/latest.txt` | …/production/latest.txt | pointer file |
+| `appshots/appcast.xml` | `https://persist.nerd.ceo/appshots/appcast.xml` | Sparkle feed (`SUFeedURL`); also read to compute the next build number |
+| `appshots/latest-appshots-arm64.dmg` | .../appshots/latest-appshots-arm64.dmg | stable "latest" download |
+| `appshots/<version>-<ts>-<sha>.dmg` | .../appshots/<...>.dmg | the immutable release DMG |
+| `appshots/latest.txt` | .../appshots/latest.txt | pointer file |
+| `appshots/appshotsctl-<version>-arm64.zip` | .../appshots/appshotsctl-<version>-arm64.zip | standalone CLI zip |
+| `appshots/appshotsctl-latest-arm64.zip` | .../appshots/appshotsctl-latest-arm64.zip | stable standalone CLI pointer |
 
 ## Values to set on the GitHub repo (`Shahfarzane/appshots`)
 
@@ -69,8 +73,8 @@ With `gh`: `gh variable set NAME -b VALUE` for variables, `gh secret set NAME` f
 ## Verification (after a release runs)
 
 ```sh
-curl -I https://persist.nerd.ceo/production/appcast.xml          # 200, content-type application/xml
-curl -s https://persist.nerd.ceo/production/appcast.xml | head   # Sparkle XML with <sparkle:version>
+curl -I https://persist.nerd.ceo/appshots/appcast.xml          # 200, content-type application/xml
+curl -s https://persist.nerd.ceo/appshots/appcast.xml | head   # Sparkle XML with <sparkle:version>
 ```
 
 Before the first release the appcast doesn't exist yet — a `404` there is expected, and the pipeline
