@@ -33,10 +33,10 @@ fi
 
 if [[ -z "$resolved_binary" ]]; then
   cat >&2 << 'ERROR'
-Appshots CLI not found. Please install Appshots:
+Appshots CLI not found. Please install or build Appshots:
 
-  # Option 1: Install via Homebrew
-  brew install appshotsctl
+  # Option 1: Install a published standalone appshotsctl release artifact.
+  # The Homebrew formula works only after its URL and sha256 are published.
 
   # Option 2: Download from https://github.com/Shahfarzane/appshots/releases
   #           and move to /Applications/Appshots.app

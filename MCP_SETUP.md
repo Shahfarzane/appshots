@@ -2,9 +2,9 @@
 
 Appshots ships a **native** MCP server built into the `appshotsctl` helper — no
 Python required. The helper is embedded in the app bundle at
-`Appshots.app/Contents/Helpers/appshotsctl`, available standalone via
-`brew install appshotsctl`, or built locally with `swift build`, so the server
-keeps working after the source repo is gone.
+`Appshots.app/Contents/Helpers/appshotsctl`, available as a standalone release
+artifact once published, or built locally with `swift build`, so the server keeps
+working after the source repo is gone.
 
 ## Recommended: the Claude Code plugin
 

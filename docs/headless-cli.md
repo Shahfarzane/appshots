@@ -1,16 +1,20 @@
 # Headless CLI usage
 
-Everything the Appshots menu-bar app does is also available from `appshotsctl`,
-so you can run Appshots on a server, in CI, or from a coding agent without ever
-launching the GUI. This doc covers capture, the daemon, and the per-binary
-permission story that headless setups have to get right.
+The Appshots capture/control surface is available from `appshotsctl`, so you can
+run captures, MCP, startup control, and the global hot-key daemon from a coding
+agent without launching the GUI. GUI-only surfaces such as the popover,
+preview/history UI, and interactive Sparkle update flow stay in `Appshots.app`.
+This doc covers capture, the daemon, and the per-binary permission story that
+headless setups have to get right.
 
 ## Getting the binary
 
 Pick whichever fits your setup:
 
-- **Standalone (recommended for GUI-less):** `brew install appshotsctl`. Signed,
-  notarized, with its own stable TCC identity (`ceo.nerd.appshots.cli`).
+- **Standalone release artifact (recommended for GUI-less once published):**
+  `appshotsctl-<version>-arm64.zip`, signed, notarized, with its own stable TCC
+  identity (`ceo.nerd.appshots.cli`). The Homebrew formula in `DevKit/Homebrew/`
+  is installable only after its URL and sha256 point at a published zip.
 - **App-bundled helper:** `/Applications/Appshots.app/Contents/Helpers/appshotsctl`.
 - **Local build:** `swift build` → `.build/debug/appshotsctl`.
 
@@ -37,11 +41,14 @@ appshotsctl capture --app Safari --copy
 Captures land under `~/.appshots/snapshots/<date>/<capture-id>/` and update the
 stable pointers (`latest.md`, `latest.txt`, `latest.json`, `index.json`). Read
 them back with `appshotsctl latest` (add `--json`, `--image`, `--model-prompt`,
-`--payload`, `--context`), `appshotsctl list`, or `appshotsctl search <query>`.
+`--payload`, `--context`, `--events`, `--dir`, or `--metadata`),
+`appshotsctl list`, or `appshotsctl search <query>`.
 
 Streaming / timing variants for integrations: `capture --events`,
 `capture --event-stream` (newline-delimited JSON, `--timeout-seconds N`, default
-`120`), `capture --timings`, and `benchmark`.
+`120`), `capture --events --timings`, `capture --timings`, and `benchmark`.
+`--app` targets are supported for normal captures and benchmarks, but rejected
+for `--events` / `--event-stream`.
 
 ## Configuration
 
@@ -75,6 +82,7 @@ monitor, prewarms the capture pipeline, and blocks. Behavior to know:
   owns the hot key only in `headless` mode, where the menu-bar app never arms its
   own monitor. If launched in any other mode — or if another daemon already holds
   the advisory `flock` at `~/.appshots/hotkey.lock` — it exits cleanly (`0`).
+  GUI presence alone does not make a headless-mode daemon yield.
 - **Live reload.** A `trigger`/`copyOnCapture` change from the CLI or GUI re-arms
   the running daemon's monitor immediately. If the startup mode changes away from
   `headless` (e.g. `startup enable --gui`), the daemon yields and exits.
@@ -90,7 +98,7 @@ launchd LaunchAgent so it starts at login. See
 
 This is the part that trips up headless setups. macOS privacy permissions are
 keyed to the **binary**, not to "Appshots" as a brand. The menu-bar app, the
-Homebrew CLI, and the LaunchAgent daemon are **separate TCC subjects**:
+standalone CLI, and the LaunchAgent daemon are **separate TCC subjects**:
 
 - The standalone CLI carries a stable identity (`CFBundleIdentifier =
   ceo.nerd.appshots.cli`, embedded in the Mach-O via an `Info.plist` section), so
