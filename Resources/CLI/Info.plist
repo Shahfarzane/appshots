@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Embedded Info.plist for the standalone `appshotsctl` command-line tool.
+
+  This is *not* a bundle Info.plist: the appshotsctl target embeds it directly
+  into the Mach-O binary via CREATE_INFOPLIST_SECTION_IN_BINARY=YES +
+  INFOPLIST_FILE. Embedding gives the bare CLI a stable TCC identity
+  (CFBundleIdentifier = ceo.nerd.appshots.cli) so Accessibility / Screen
+  Recording grants survive rebuilds, and lets the permission prompts show
+  the usage strings below. CFBundleShortVersionString / CFBundleVersion are
+  substituted from Version.xcconfig at build time.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>appshotsctl</string>
+	<key>CFBundleIdentifier</key>
+	<string>ceo.nerd.appshots.cli</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>appshotsctl</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>appshotsctl reads the active app's accessibility tree when you capture an appshot.</string>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>appshotsctl captures the active app window screenshot when you create an appshot.</string>
+</dict>
+</plist>

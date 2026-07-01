@@ -1,0 +1,42 @@
+# --- Swift / SwiftPM ---
+.build/
+.swiftpm/
+
+# --- Xcode ---
+# *.xcodeproj is generated from project.yml (xcodegen)
+*.xcodeproj/
+.xcode-derived/
+.xcode-derived*/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+xcodebuild.log
+
+# --- macOS ---
+.DS_Store
+
+# --- Editors ---
+.vscode/
+
+# --- Build & distribution artifacts ---
+*.app/
+*.dSYM/
+*.dSYM.zip
+*.dmg
+*.pkg
+*.zip
+artifacts/
+
+# --- Signing / secrets ---
+DevKit/Keychain/
+*.keychain
+*.p12
+*.mobileprovision
+.env
+.env.*
+
+# --- DevKit Node tooling ---
+DevKit/Scripts/node_modules/
+DevKit/Scripts/package-lock.json

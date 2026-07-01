@@ -1,0 +1,17 @@
+{
+  "appIcon" : {
+    "x" : 179,
+    "y" : 175
+  },
+  "applicationsLink" : {
+    "x" : 505,
+    "y" : 175
+  },
+  "iconSize" : 144,
+  "scale" : 2,
+  "textSize" : 12,
+  "window" : {
+    "height" : 372,
+    "width" : 670
+  }
+}

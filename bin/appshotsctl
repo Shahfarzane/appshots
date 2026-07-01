@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+
+# Resolve the appshotsctl binary in order of preference:
+# 1. Homebrew installation at /opt/homebrew/bin/appshotsctl (macOS ARM64 default)
+# 2. Legacy Homebrew installation at /usr/local/bin/appshotsctl (macOS Intel)
+# 3. Appshots.app bundle at /Applications/Appshots.app/Contents/Helpers/appshotsctl
+# 4. System search path via `command -v`
+# 5. Repository .build/{release,debug}/appshotsctl for development
+# Otherwise, exit with helpful error message
+
+resolved_binary=""
+
+# Check Homebrew ARM64
+if [[ -f "/opt/homebrew/bin/appshotsctl" ]]; then
+  resolved_binary="/opt/homebrew/bin/appshotsctl"
+# Check Homebrew Intel
+elif [[ -f "/usr/local/bin/appshotsctl" ]]; then
+  resolved_binary="/usr/local/bin/appshotsctl"
+# Check app bundle
+elif [[ -f "/Applications/Appshots.app/Contents/Helpers/appshotsctl" ]]; then
+  resolved_binary="/Applications/Appshots.app/Contents/Helpers/appshotsctl"
+# Check system PATH
+elif command -v appshotsctl &> /dev/null; then
+  resolved_binary="$(command -v appshotsctl)"
+# Check repo release build
+elif [[ -f "${CLAUDE_PLUGIN_ROOT:-.}/.build/release/appshotsctl" ]]; then
+  resolved_binary="${CLAUDE_PLUGIN_ROOT:-.}/.build/release/appshotsctl"
+# Check repo debug build
+elif [[ -f "${CLAUDE_PLUGIN_ROOT:-.}/.build/debug/appshotsctl" ]]; then
+  resolved_binary="${CLAUDE_PLUGIN_ROOT:-.}/.build/debug/appshotsctl"
+fi
+
+if [[ -z "$resolved_binary" ]]; then
+  cat >&2 << 'ERROR'
+Appshots CLI not found. Please install Appshots:
+
+  # Option 1: Install via Homebrew
+  brew install appshotsctl
+
+  # Option 2: Download from https://github.com/Shahfarzane/appshots/releases
+  #           and move to /Applications/Appshots.app
+
+Alternatively, if developing from source, build with:
+
+  swift build      # debug build
+  swift build -c release   # release build
+ERROR
+  exit 127
+fi
+
+exec "$resolved_binary" "$@"

@@ -1,0 +1,55 @@
+name: Bug Report
+description: Report something that is broken in Appshots.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps To Reproduce
+      description: List the exact steps that trigger the problem.
+      placeholder: |
+        1. Open Appshots
+        2. Capture an appshot
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS Version
+      placeholder: "14.6, 15.0, ..."
+    validations:
+      required: true
+  - type: input
+    id: appshots
+    attributes:
+      label: Appshots Version Or Commit
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs Or Screenshots
+      description: Remove sensitive data before sharing.
+    validations:
+      required: false
