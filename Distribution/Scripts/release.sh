@@ -51,8 +51,9 @@ ARTIFACTS_DIR="$PROJECT_ROOT/artifacts"
 # Set APPSHOTS_CLI_DIST=0 to skip the standalone-CLI phase entirely.
 APPSHOTS_CLI_DIST="${APPSHOTS_CLI_DIST:-1}"
 
-RELEASE_ENVIRONMENT="${RELEASE_ENVIRONMENT:-production}"
-PUBLIC_BASE_URL="${CLOUDFLARE_R2_PUBLIC_BASE_URL:-https://persist.nerd.ceo}"
+# R2 key prefix + public-URL path segment (…/<RELEASE_ENVIRONMENT>/appcast.xml).
+RELEASE_ENVIRONMENT="${RELEASE_ENVIRONMENT:-appshots}"
+PUBLIC_BASE_URL="${CLOUDFLARE_R2_PUBLIC_BASE_URL:-https://pub-bfc9c06667434ccba3102001f2fa2ee1.r2.dev}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
 
 # ----------------------------------------------------------------------------- logging / paths
