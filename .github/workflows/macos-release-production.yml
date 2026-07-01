@@ -1,0 +1,86 @@
+name: macOS Release - Production
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: macos-release-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, Sign, Notarize, Release
+    runs-on: macos-26
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      DEVELOPER_ID_KEYCHAIN_GZIP_BASE64: ${{ secrets.DEVELOPER_ID_KEYCHAIN_GZIP_BASE64 }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      CLOUDFLARE_R2_ACCOUNT_ID: ${{ vars.CLOUDFLARE_R2_ACCOUNT_ID }}
+      CLOUDFLARE_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ vars.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_PUBLIC_BASE_URL: ${{ vars.CLOUDFLARE_R2_PUBLIC_BASE_URL }}
+      NSUnbufferedIO: "YES"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Setup build
+        run: |
+          defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES
+          defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES
+
+      - name: Restore signing material
+        run: |
+          set -euo pipefail
+          test -n "$DEVELOPER_ID_KEYCHAIN_GZIP_BASE64"
+          test -n "$KEYCHAIN_PASSWORD"
+          test -n "$SPARKLE_PRIVATE_KEY"
+          mkdir -p DevKit/Keychain/SparkleKeys
+          printf "%s" "$DEVELOPER_ID_KEYCHAIN_GZIP_BASE64" | base64 --decode | gunzip > DevKit/Keychain/Developer-ID-Keychain.keychain
+          printf "%s" "$SPARKLE_PRIVATE_KEY" > DevKit/Keychain/SparkleKeys/private-key.txt
+          chmod 600 DevKit/Keychain/Developer-ID-Keychain.keychain
+          chmod 600 DevKit/Keychain/SparkleKeys/private-key.txt
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build, sign, notarize, package
+        id: build
+        timeout-minutes: 45
+        run: DevKit/Scripts/release.sh build
+
+      - name: Create or update GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build.outputs.tag }}
+          name: Release ${{ steps.build.outputs.tag }}
+          files: |
+            artifacts/Appshots.dmg
+            artifacts/appshotsctl-*-arm64.zip
+          generate_release_notes: true
+
+      - name: Publish Sparkle appcast and DMG to R2
+        run: DevKit/Scripts/release.sh upload
+
+      - name: Upload release debug artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-debug
+          path: |
+            xcodebuild.log
+            .build/Appshots.dmg
+            .build/Appshots.xcarchive
+          if-no-files-found: ignore

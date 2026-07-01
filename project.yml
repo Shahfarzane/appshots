@@ -1,0 +1,162 @@
+name: Appshots
+attributes:
+  LastUpgradeCheck: "2700"
+  LastSwiftUpdateCheck: "2700"
+options:
+  minimumXcodeGenVersion: 2.44.0
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # Enhanced Security (hardened process). Pointer authentication is forced
+    # OFF because Sparkle ships an arm64-only binary XCFramework (no arm64e
+    # slice), so the cascade from ENABLE_ENHANCED_SECURITY must not build arm64e.
+    ENABLE_ENHANCED_SECURITY: YES
+    ENABLE_POINTER_AUTHENTICATION: NO
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.7.0
+  Luminare:
+    url: https://github.com/MrKai77/Luminare
+    revision: 25056d7ac24b9a45a4225ea36da90329ea16d9a1
+targets:
+  AppshotsCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/AppshotsCore
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: ApplicationServices.framework
+      - sdk: CoreGraphics.framework
+      - sdk: ImageIO.framework
+      - sdk: Metal.framework
+      - sdk: QuartzCore.framework
+      - sdk: ScreenCaptureKit.framework
+      - sdk: UniformTypeIdentifiers.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ceo.nerd.appshots.core
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: YES
+
+  Appshots:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Appshots
+        excludes:
+          - Configuration
+      - path: Resources/Assets.xcassets
+      - path: Resources/Appshot.wav
+    dependencies:
+      - target: AppshotsCore
+      - target: appshotsctl
+        link: false
+        embed: false
+      - sdk: ServiceManagement.framework
+      - package: Sparkle
+        product: Sparkle
+      - package: Luminare
+        product: Luminare
+    postCompileScripts:
+      - name: Embed appshotsctl helper
+        inputFiles:
+          - $(BUILT_PRODUCTS_DIR)/appshotsctl
+        outputFiles:
+          - $(BUILT_PRODUCTS_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/appshotsctl
+        script: |
+          set -e
+          CONTENTS="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}"
+          mkdir -p "${CONTENTS}/Helpers"
+          cp -f "${BUILT_PRODUCTS_DIR}/appshotsctl" "${CONTENTS}/Helpers/appshotsctl"
+          chmod +x "${CONTENTS}/Helpers/appshotsctl"
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDevelopmentRegion: en
+        CFBundleExecutable: $(EXECUTABLE_NAME)
+        CFBundleIdentifier: $(PRODUCT_BUNDLE_IDENTIFIER)
+        CFBundleIconFile: AppIcon
+        CFBundleInfoDictionaryVersion: "6.0"
+        CFBundleName: $(PRODUCT_NAME)
+        CFBundlePackageType: APPL
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSAccessibilityUsageDescription: Appshots reads the active app's accessibility tree when you capture an appshot.
+        NSHighResolutionCapable: true
+        NSScreenCaptureUsageDescription: Appshots captures the active app window screenshot when you create an appshot.
+        NSPrincipalClass: NSApplication
+        SUAutomaticallyUpdate: true
+        SUEnableAutomaticChecks: true
+        SUFeedURL: $(SPARKLE_FEED_URL)
+        SUPublicEDKey: PRq99IaxC621L/e/dUIZLs48SAwBEvYZ2lhoiwrUBl0=
+    configFiles:
+      Debug: Sources/Appshots/Configuration/Version.xcconfig
+      Release: Sources/Appshots/Configuration/Version.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ceo.nerd.appshots
+        PRODUCT_NAME: Appshots
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SPARKLE_FEED_URL: https://persist.nerd.ceo/production/appcast.xml
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: Apple Development
+        DEVELOPMENT_TEAM: 89S32876QM
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Appshots.entitlements
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+
+  appshotsctl:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/AppshotsCLI
+    dependencies:
+      - target: AppshotsCore
+    configFiles:
+      Debug: Sources/Appshots/Configuration/Version.xcconfig
+      Release: Sources/Appshots/Configuration/Version.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ceo.nerd.appshots.cli
+        PRODUCT_NAME: appshotsctl
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: appshotsctl.entitlements
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: Apple Development
+        DEVELOPMENT_TEAM: 89S32876QM
+        # Embed an Info.plist section into the bare command-line binary so the
+        # CLI has a stable TCC identity (ceo.nerd.appshots.cli) and the
+        # Accessibility / Screen Recording prompts show usage strings. This is
+        # the correct mechanism for a `tool` target (no bundle to host a plist).
+        GENERATE_INFOPLIST_FILE: NO
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        INFOPLIST_FILE: Resources/CLI/Info.plist
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+          DEVELOPMENT_TEAM: ""
+schemes:
+  Appshots:
+    build:
+      targets:
+        Appshots: all
+    run:
+      config: Debug

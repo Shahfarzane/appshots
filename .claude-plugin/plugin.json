@@ -1,0 +1,20 @@
+{
+  "name": "appshots",
+  "version": "0.1.3",
+  "description": "Capture macOS app context for Claude Code and coding agents. Takes screenshot + accessibility tree snapshots and stores them for reference by CLI and MCP tools.",
+  "author": {
+    "name": "Shah Farzane",
+    "email": "shahinfarzane90@gmail.com",
+    "url": "https://github.com/Shahfarzane"
+  },
+  "homepage": "https://github.com/Shahfarzane/appshots",
+  "repository": "https://github.com/Shahfarzane/appshots",
+  "license": "MIT",
+  "keywords": ["appshot", "screenshot", "accessibility", "context", "macOS", "capture"],
+  "mcpServers": {
+    "appshots": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/appshotsctl",
+      "args": ["mcp"]
+    }
+  }
+}

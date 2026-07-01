@@ -1,0 +1,16 @@
+{
+  "name": "appshots",
+  "owner": {
+    "name": "Shah Farzane",
+    "url": "https://github.com/Shahfarzane"
+  },
+  "plugins": [
+    {
+      "name": "appshots",
+      "source": "./",
+      "description": "Capture macOS app context (screenshot + accessibility tree) as Codex-style <appshot> prompts for Claude Code — via CLI, headless daemon, and MCP.",
+      "category": "productivity",
+      "keywords": ["appshot", "screenshot", "accessibility", "context", "macOS", "capture", "mcp"]
+    }
+  ]
+}
