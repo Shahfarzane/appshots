@@ -5,25 +5,25 @@
 # ships with its own stable TCC identity (CFBundleIdentifier
 # ceo.nerd.appshots.cli), so Accessibility / Screen Recording grants persist.
 #
-# The bottle points at the notarized zip produced by DevKit/Scripts/release.sh
-# and published to R2 under the production channel. Until the first artifact is
+# The formula points at the notarized zip produced by DevKit/Scripts/release.sh
+# and published to R2 under the appshots channel. Until the first artifact is
 # published, the sha256 below is a CLEARLY-MARKED PLACEHOLDER — replace it with
 # the real digest of the published zip:
 #
 #   shasum -a 256 appshotsctl-<version>-arm64.zip
 #
-# Tap install (once tapped):  brew install appshotsctl
+# Tap install (once the formula is published):  brew install appshotsctl
 class Appshotsctl < Formula
   desc "Standalone CLI + MCP server that sends macOS app context to coding agents"
   homepage "https://github.com/Shahfarzane/appshots"
   version "0.1.3"
-  url "https://persist.nerd.ceo/production/appshotsctl-#{version}-arm64.zip"
+  url "https://persist.nerd.ceo/appshots/appshotsctl-#{version}-arm64.zip"
   # PLACEHOLDER sha256 — replace with the digest of the published notarized zip.
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
 
   depends_on arch: :arm64
-  depends_on macos: :sonoma # macOS 14+
+  depends_on macos: :sequoia # macOS 15+
 
   def install
     bin.install "appshotsctl"
