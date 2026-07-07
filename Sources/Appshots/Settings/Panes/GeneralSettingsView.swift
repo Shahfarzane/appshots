@@ -1,5 +1,7 @@
+import AppshotsCore
 import Luminare
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The merged General settings pane: Trigger Key, Permissions, and Sounds on a
 /// single screen (replacing the separate Hotkeys/Sounds tabs). The trigger key
@@ -36,6 +38,23 @@ struct GeneralSettingsView: View {
 
             LuminareSection("Options") {
                 LuminareToggle("Show in Dock", isOn: $model.showInDock)
+
+                // Codex-style handoff: after a hot-key capture, activate the
+                // chosen app and paste the appshot into its composer.
+                LuminareCompose {
+                    Picker("", selection: sendTargetSelection) {
+                        Text("Do nothing").tag("")
+                        Text("Claude Desktop").tag(PostCaptureSender.claudeDesktopBundleID)
+                        if let custom = customSendTarget {
+                            Text(displayName(forBundleID: custom)).tag(custom)
+                        }
+                        Text("Choose App…").tag(Self.chooseAppTag)
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                } label: {
+                    Text("Send capture to")
+                }
             }
 
             LuminareSection("Startup") {
@@ -62,6 +81,60 @@ struct GeneralSettingsView: View {
             model.refreshPermissions()
             model.refreshStartupStatus()
         }
+    }
+
+    // MARK: - Send-capture-to picker
+
+    /// Sentinel tag that opens the app chooser instead of storing a value.
+    private static let chooseAppTag = "__choose__"
+
+    /// The configured target when it isn't one of the built-in options, so the
+    /// picker can show it as its own entry.
+    private var customSendTarget: String? {
+        guard let target = model.postCaptureSendTarget,
+              target != PostCaptureSender.claudeDesktopBundleID
+        else {
+            return nil
+        }
+        return target
+    }
+
+    private var sendTargetSelection: Binding<String> {
+        Binding(
+            get: { model.postCaptureSendTarget ?? "" },
+            set: { newValue in
+                if newValue == Self.chooseAppTag {
+                    chooseSendTargetApp()
+                } else {
+                    model.postCaptureSendTarget = newValue.isEmpty ? nil : newValue
+                }
+            }
+        )
+    }
+
+    /// Picks an app bundle from /Applications and stores its bundle identifier.
+    /// Cancel leaves the current selection untouched.
+    private func chooseSendTargetApp() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: "/Applications", isDirectory: true)
+        panel.message = "Choose the app each capture is sent to"
+        guard panel.runModal() == .OK,
+              let url = panel.url,
+              let bundleID = Bundle(url: url)?.bundleIdentifier
+        else {
+            return
+        }
+        model.postCaptureSendTarget = bundleID
+    }
+
+    private func displayName(forBundleID bundleID: String) -> String {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else {
+            return bundleID
+        }
+        return FileManager.default.displayName(atPath: url.path)
     }
 }
 

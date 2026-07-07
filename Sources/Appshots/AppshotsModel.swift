@@ -46,6 +46,17 @@ final class AppshotsModel {
         }
     }
 
+    /// Bundle id of the app each capture is sent to (activate + paste) after it
+    /// lands on the clipboard; `nil` disables the step. Persisted to `config.json`.
+    var postCaptureSendTarget: String? {
+        didSet {
+            guard oldValue != postCaptureSendTarget else { return }
+            if isApplyingExternalSettings == false {
+                persistPostCaptureSendTarget(postCaptureSendTarget)
+            }
+        }
+    }
+
     /// Bumped whenever the GUI login-item status should be re-read. Reading it
     /// inside the `launchAtLogin` / `loginItemRequiresApproval` getters
     /// establishes the SwiftUI observation dependency so the UI refreshes when
@@ -124,6 +135,7 @@ final class AppshotsModel {
         triggerKey = Self.triggerKey(from: settings)
         playsCaptureSound = AppshotSoundPlayer.isEnabled
         showInDock = settings.showInDock
+        postCaptureSendTarget = settings.postCaptureSendTarget
         observeSettingsChanges()
     }
 
@@ -133,6 +145,14 @@ final class AppshotsModel {
             try settingsStore.mutate { $0.showInDock = showInDock }
         } catch {
             AppLog.store.error("failed to persist showInDock: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func persistPostCaptureSendTarget(_ target: String?) {
+        do {
+            try settingsStore.mutate { $0.postCaptureSendTarget = target }
+        } catch {
+            AppLog.store.error("failed to persist postCaptureSendTarget: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -195,6 +215,9 @@ final class AppshotsModel {
             // `didSet` re-applies the activation policy live; the guard above
             // suppresses the redundant persist back to disk.
             showInDock = settings.showInDock
+        }
+        if postCaptureSendTarget != settings.postCaptureSendTarget {
+            postCaptureSendTarget = settings.postCaptureSendTarget
         }
 
         // A CLI `startup --gui/--headless` write reconciles the running app live.
@@ -397,6 +420,18 @@ final class AppshotsModel {
                     )
                     self.refreshPermissions()
                     NSApp.requestUserAttention(.informationalRequest)
+                    // Codex-style handoff: with a target configured, activate it
+                    // and paste the screenshot + a one-line reference into its
+                    // composer.
+                    if let sendTarget = self.postCaptureSendTarget {
+                        Task {
+                            await PostCaptureSender.send(
+                                record: record,
+                                image: screenshotImage,
+                                toBundleID: sendTarget
+                            )
+                        }
+                    }
                 }
             } catch {
                 AppLog.capture.error("capture failed app=\(target.name, privacy: .public) error=\(error.localizedDescription, privacy: .public)")

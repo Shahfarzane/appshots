@@ -79,6 +79,22 @@ struct AppshotStoreTests {
         #expect(legacy.createdAt == Date(timeIntervalSince1970: 1))
     }
 
+    @Test @MainActor func `Post-capture reference line names the capture id and prompt path`() throws {
+        let rootURL = temporaryRootURL()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let store = AppshotStore(rootURL: rootURL)
+        let record = try store.save(
+            target: FrontmostAppTarget(name: "Safari", bundleID: "com.apple.Safari", pid: 42),
+            output: CaptureOutput(text: "Window: Reference", metadata: metadata())
+        )
+
+        let line = PostCaptureSender.referenceLine(for: record)
+        #expect(line == "Attached appshot \(record.id). Full context: \(record.appshotTextPath)")
+        // One line only: the composer paste must never turn into a text wall.
+        #expect(line.contains("\n") == false)
+    }
+
     @Test func `Save persists metrics when recorder is supplied`() throws {
         let rootURL = temporaryRootURL()
         defer { try? FileManager.default.removeItem(at: rootURL) }

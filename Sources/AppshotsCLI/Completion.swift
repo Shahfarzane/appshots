@@ -54,7 +54,8 @@ enum Completion {
             _values 'subcommand' list get set unset path
           elif (( CURRENT == 4 )) && [[ $words[3] == (get|set|unset) ]]; then
             _values 'key' triggerKey captureSound copyOnCapture onboardingCompleted \\
-              startupMode autoUpdate showInDock mcpDefaultScope mcpLastProjectDirectory
+              startupMode autoUpdate showInDock mcpDefaultScope mcpLastProjectDirectory \\
+              postCaptureSendTarget
           fi ;;
         trigger) (( CURRENT == 3 )) && _values 'subcommand' get set reset ;;
         sound) (( CURRENT == 3 )) && _values 'subcommand' enable disable status ;;
@@ -84,7 +85,7 @@ enum Completion {
             COMPREPLY=( $(compgen -W "list get set unset path" -- "$cur") )
           elif [ "$COMP_CWORD" -eq 3 ]; then
             case "${COMP_WORDS[2]}" in
-              get|set|unset) COMPREPLY=( $(compgen -W "triggerKey captureSound copyOnCapture onboardingCompleted startupMode autoUpdate showInDock mcpDefaultScope mcpLastProjectDirectory" -- "$cur") );;
+              get|set|unset) COMPREPLY=( $(compgen -W "triggerKey captureSound copyOnCapture onboardingCompleted startupMode autoUpdate showInDock mcpDefaultScope mcpLastProjectDirectory postCaptureSendTarget" -- "$cur") );;
             esac
           fi ;;
         trigger) [ "$COMP_CWORD" -eq 2 ] && COMPREPLY=( $(compgen -W "get set reset" -- "$cur") );;
