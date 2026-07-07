@@ -421,9 +421,16 @@ final class AppshotsModel {
                     self.refreshPermissions()
                     NSApp.requestUserAttention(.informationalRequest)
                     // Codex-style handoff: with a target configured, activate it
-                    // and paste so the appshot lands in its composer.
+                    // and paste the screenshot + a one-line reference into its
+                    // composer.
                     if let sendTarget = self.postCaptureSendTarget {
-                        Task { await PostCaptureSender.send(toBundleID: sendTarget) }
+                        Task {
+                            await PostCaptureSender.send(
+                                record: record,
+                                image: screenshotImage,
+                                toBundleID: sendTarget
+                            )
+                        }
                     }
                 }
             } catch {

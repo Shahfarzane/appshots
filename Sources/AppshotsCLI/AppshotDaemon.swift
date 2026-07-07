@@ -99,15 +99,16 @@ enum AppshotDaemon {
     private static func performCapture() {
         do {
             let record = try AppshotCaptureService.captureFrontmostApplication()
-            // The send step pastes from the clipboard, so a configured target
-            // forces the copy even when copyOnCapture is off.
-            if copyOnCapture || postCaptureSendTarget != nil {
+            // The send flow ends by restoring the standard clipboard copy, so a
+            // configured target implies the copy even when copyOnCapture is off.
+            let copied = copyOnCapture || postCaptureSendTarget != nil
+            if copied {
                 PasteboardWriter.copyAppshotMarkup(for: record)
             }
             if let target = postCaptureSendTarget {
-                Task { @MainActor in await PostCaptureSender.send(toBundleID: target) }
+                Task { @MainActor in await PostCaptureSender.send(record: record, toBundleID: target) }
             }
-            AppLog.lifecycle.notice("daemon capture saved id=\(record.id, privacy: .public) copied=\(copyOnCapture, privacy: .public)")
+            AppLog.lifecycle.notice("daemon capture saved id=\(record.id, privacy: .public) copied=\(copied, privacy: .public)")
         } catch {
             AppLog.capture.error("daemon capture failed: \(error.localizedDescription, privacy: .public)")
         }

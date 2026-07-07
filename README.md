@@ -134,7 +134,7 @@ appshotsctl onboarding status             # Accessibility + Screen Recording + o
 
 Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `showInDock`, `mcpDefaultScope`, `mcpLastProjectDirectory`, `postCaptureSendTarget`.
 
-`postCaptureSendTarget` is the Codex-style composer handoff: set it to an app's bundle id (e.g. `com.anthropic.claudefordesktop` for Claude Desktop) and every hot-key capture is copied, the app is activated, and Cmd+V is synthesized so the appshot lands in its input box. Also configurable in the GUI under Settings → General → "Send capture to". Empty disables it.
+`postCaptureSendTarget` is the Codex-style composer handoff: set it to an app's bundle id (e.g. `com.anthropic.claudefordesktop` for Claude Desktop) and every hot-key capture activates the app and pastes the screenshot plus a one-line reference (`Attached appshot <id>. Full context: …/appshot.md`) into its input box — not the full AX-tree markup, which an agent fetches via the MCP tools or the file path when it needs it. The clipboard is left holding the standard full-markup copy afterwards. Also configurable in the GUI under Settings → General → "Send capture to". Empty disables it.
 
 Exit codes are `0` (ok), `1` (failure), and `2` (usage error / not found).
 
