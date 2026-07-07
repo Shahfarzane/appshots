@@ -1,6 +1,6 @@
 #!/bin/zsh
 #
-# release.sh — Appshots macOS release pipeline (Developer ID sign + notarize + Sparkle + Cloudflare R2).
+# release.sh — Appshots macOS release pipeline (Developer ID sign + notarize + Sparkle + GitHub Releases).
 #
 # Consolidates the former Distribution/Scripts/* chain (publish-with-build, workspace_archive,
 # sign-release-app, publish-submit-notary, common_package, publish-submit-r2, the config/
@@ -10,8 +10,8 @@
 #   release.sh build    archive → sign (in place) → styled DMG → notarize → staple → package
 #                       → also Developer-ID-sign + notarize the standalone appshotsctl CLI into
 #                       artifacts/appshotsctl-<version>-arm64.zip; emits version to $GITHUB_OUTPUT
-#   release.sh upload   generate Sparkle appcast → upload DMG + appcast + latest pointers to R2,
-#                       plus the standalone CLI zip + appshotsctl-latest-arm64.zip pointer
+#   release.sh upload   generate Sparkle appcast → attach the immutable DMG + appcast (and the
+#                       standalone CLI zip) as assets on the version's GitHub Release
 #   release.sh all      build then upload (local one-shot)
 #
 # The GitHub Actions workflow runs `build`, creates the GitHub Release, then runs `upload`
@@ -51,10 +51,11 @@ ARTIFACTS_DIR="$PROJECT_ROOT/artifacts"
 # Set APPSHOTS_CLI_DIST=0 to skip the standalone-CLI phase entirely.
 APPSHOTS_CLI_DIST="${APPSHOTS_CLI_DIST:-1}"
 
-# R2 key prefix + public-URL path segment (…/<RELEASE_ENVIRONMENT>/appcast.xml).
-RELEASE_ENVIRONMENT="${RELEASE_ENVIRONMENT:-appshots}"
-PUBLIC_BASE_URL="${CLOUDFLARE_R2_PUBLIC_BASE_URL:-https://updates.nerd.ceo}"
-PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
+# Updates are GitHub Release assets. The appcast is attached to every release,
+# and Sparkle reads the stable alias below — GitHub redirects it to the newest
+# release's copy, so the feed URL baked into shipped builds never changes.
+GITHUB_REPO="${APPSHOTS_GITHUB_REPO:-Shahfarzane/appshots}"
+SPARKLE_FEED_URL_DEFAULT="https://github.com/${GITHUB_REPO}/releases/latest/download/appcast.xml"
 
 # ----------------------------------------------------------------------------- logging / paths
 log_info() { echo "[i] $*"; }
@@ -138,9 +139,9 @@ unlock_keychain() {
   export CODE_SIGNING_IDENTITY CODE_SIGNING_TEAM NOTARIZE_KEYCHAIN_PROFILE KEYCHAIN_DB
 }
 
-# ----------------------------------------------------------------------------- build number (R2-stateful)
+# ----------------------------------------------------------------------------- build number (release-stateful)
 latest_published_build() {
-  local url="${PUBLIC_BASE_URL}/${RELEASE_ENVIRONMENT}/appcast.xml"
+  local url="$SPARKLE_FEED_URL_DEFAULT"
   local tmp http_status build
   tmp=$(mktemp)
   for _ in 1 2; do
@@ -149,7 +150,7 @@ latest_published_build() {
       build=$(awk -F'[<>]' '/<sparkle:version>/{print $3; exit}' "$tmp")
       [[ "$build" =~ ^[0-9]+$ ]] && { rm -f "$tmp"; echo "$build"; return 0; }
     elif [[ "$http_status" == "404" ]]; then
-      log_info "no existing $RELEASE_ENVIRONMENT appcast at $url; using 0" >&2
+      log_info "no published appcast at $url yet; using 0" >&2
       rm -f "$tmp"; echo "0"; return 0
     fi
     sleep 1
@@ -159,14 +160,14 @@ latest_published_build() {
 }
 
 increment_build() {
-  # Local builds can't read the published appcast (R2 not yet provisioned). Setting
+  # Local builds may not want the network round-trip to the published appcast. Setting
   # APPSHOTS_SKIP_BUILD_BUMP=1 keeps the build number in Version.xcconfig as-is and
   # skips the network round-trip. CI leaves this unset, so its behavior is unchanged.
   if [[ "${APPSHOTS_SKIP_BUILD_BUMP:-0}" == "1" ]]; then
     log_info "APPSHOTS_SKIP_BUILD_BUMP=1 — keeping local build number $(read_project_version "$VERSION_XCCONFIG")"
     return 0
   fi
-  log_step "auto-incrementing build number ($RELEASE_ENVIRONMENT)..."
+  log_step "auto-incrementing build number..."
   local latest current new
   latest=$(latest_published_build)
   current=$(read_project_version "$VERSION_XCCONFIG")
@@ -188,7 +189,7 @@ run_xcodebuild() {
 }
 
 archive_app() {
-  local feed="${SPARKLE_FEED_URL:-${PUBLIC_BASE_URL}/${RELEASE_ENVIRONMENT}/appcast.xml}"
+  local feed="${SPARKLE_FEED_URL:-$SPARKLE_FEED_URL_DEFAULT}"
   log_step "archiving $SCHEME v$MARKETING_VERSION ($PROJECT_VERSION) feed=$feed"
   rm -rf "$ARCHIVE_PATH" "$DERIVED_DATA"; rm -f "$XCODEBUILD_LOG"
   mkdir -p "$BUILD_DIR" "$DERIVED_DATA"
@@ -421,7 +422,7 @@ emit_version() {
   fi
 }
 
-# ----------------------------------------------------------------------------- appcast + R2 upload
+# ----------------------------------------------------------------------------- appcast + release upload
 find_generate_appcast() {
   local c
   for c in \
@@ -442,35 +443,33 @@ find_generate_appcast() {
   die "generate_appcast not found (build the release first)"
 }
 
-r2_put() {
-  local src="$1" key="$2" content_type="$3"
-  log_info "uploading: s3://${CLOUDFLARE_R2_BUCKET}/${key}"
-  aws --endpoint-url "$R2_ENDPOINT" s3 cp "$src" "s3://${CLOUDFLARE_R2_BUCKET}/${key}" --content-type "$content_type"
-  local size
-  size=$(aws --endpoint-url "$R2_ENDPOINT" s3api head-object --bucket "$CLOUDFLARE_R2_BUCKET" --key "$key" --query ContentLength --output text) \
-    || die "R2 object verification failed: s3://${CLOUDFLARE_R2_BUCKET}/${key}"
-  [[ -n "$size" && "$size" != "None" ]] || die "R2 object has no content length: ${key}"
-  log_ok "verified R2 object: s3://${CLOUDFLARE_R2_BUCKET}/${key} (${size} bytes)"
+# Attaches files as assets on the tag's GitHub Release (creating the release
+# for local one-shot runs; CI creates it before the upload phase) and verifies
+# each asset landed. Requires an authenticated `gh` (GH_TOKEN in CI).
+gh_release_ensure() {
+  local tag="$1"
+  gh release view "$tag" --repo "$GITHUB_REPO" > /dev/null 2>&1 && return 0
+  log_step "creating GitHub release $tag"
+  gh release create "$tag" --repo "$GITHUB_REPO" --title "Release $tag" --generate-notes
+}
+
+gh_release_put() {
+  local tag="$1"; shift
+  local f
+  gh release upload "$tag" "$@" --repo "$GITHUB_REPO" --clobber
+  local assets
+  assets=$(gh release view "$tag" --repo "$GITHUB_REPO" --json assets --jq '.assets[].name')
+  for f in "$@"; do
+    echo "$assets" | grep -qx "$(basename "$f")" || die "release asset missing after upload: $(basename "$f")"
+    log_ok "verified release asset: $(basename "$f")"
+  done
 }
 
 upload_release() {
   local dmg="${1:-$DMG_OUTPUT}"
   require_file "$dmg" "DMG not found: $dmg"
   require_file "$SPARKLE_PRIVATE_KEY_PATH" "Sparkle key not found: $SPARKLE_PRIVATE_KEY_PATH"
-  require_cmd shasum; require_cmd hdiutil; require_cmd xcrun
-  local v
-  for v in CLOUDFLARE_R2_BUCKET CLOUDFLARE_R2_ACCOUNT_ID CLOUDFLARE_R2_ACCESS_KEY_ID CLOUDFLARE_R2_SECRET_ACCESS_KEY; do
-    [[ -n "${(P)v:-}" ]] || die "missing: $v"
-  done
-  if ! command -v aws > /dev/null 2>&1; then
-    command -v brew > /dev/null 2>&1 && brew install awscli || die "aws CLI required"
-  fi
-
-  export AWS_ACCESS_KEY_ID="$CLOUDFLARE_R2_ACCESS_KEY_ID"
-  export AWS_SECRET_ACCESS_KEY="$CLOUDFLARE_R2_SECRET_ACCESS_KEY"
-  export AWS_DEFAULT_REGION="${CLOUDFLARE_R2_REGION:-auto}"
-  export AWS_PAGER=""
-  R2_ENDPOINT="https://${CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+  require_cmd shasum; require_cmd hdiutil; require_cmd xcrun; require_cmd gh
 
   # Detach the DMG mount + remove temp dirs even if a die fires partway through.
   _REL_MOUNT=""; _REL_TMP=""
@@ -500,27 +499,28 @@ upload_release() {
   _REL_TMP=$(mktemp -d); archives="$_REL_TMP/sparkle/archives"; mkdir -p "$archives"
   cp "$dmg" "$archives/$fname"
 
+  local tag="v${version}"
   local gen
   gen=$(find_generate_appcast)
   log_step "generating appcast with $gen"
-  ( cd "$_REL_TMP/sparkle" && "$gen" --download-url-prefix "${PUBLIC_BASE_URL}/${RELEASE_ENVIRONMENT}/" --ed-key-file "$SPARKLE_PRIVATE_KEY_PATH" "$archives" )
+  # Enclosure URLs point at this release's immutable, versioned asset; the
+  # stable feed alias (releases/latest/download/appcast.xml) always redirects
+  # to the newest release's appcast.
+  ( cd "$_REL_TMP/sparkle" && "$gen" --download-url-prefix "https://github.com/${GITHUB_REPO}/releases/download/${tag}/" --ed-key-file "$SPARKLE_PRIVATE_KEY_PATH" "$archives" )
   [[ -f "$archives/appcast.xml" ]] || die "appcast.xml not created"
 
-  log_step "uploading to R2 ($RELEASE_ENVIRONMENT)..."
-  r2_put "$archives/$fname" "${RELEASE_ENVIRONMENT}/${fname}" "application/x-apple-diskimage"
-  r2_put "$archives/$fname" "${RELEASE_ENVIRONMENT}/latest-appshots-arm64.dmg" "application/x-apple-diskimage"
-  r2_put "$archives/appcast.xml" "${RELEASE_ENVIRONMENT}/appcast.xml" "application/xml"
-  echo "$fname" > "$_REL_TMP/latest.txt"
-  r2_put "$_REL_TMP/latest.txt" "${RELEASE_ENVIRONMENT}/latest.txt" "text/plain"
+  log_step "publishing Sparkle assets to the $tag GitHub release..."
+  gh_release_ensure "$tag"
+  gh_release_put "$tag" "$archives/$fname" "$archives/appcast.xml"
   rm -rf "$_REL_TMP"; _REL_TMP=""
-  log_ok "uploaded: $fname"
+  log_ok "published: $fname + appcast.xml -> https://github.com/${GITHUB_REPO}/releases/tag/${tag}"
 
   upload_cli_artifact "$version"
 }
 
-# Upload the standalone CLI zip alongside the DMG/appcast: a versioned key plus
-# a stable latest pointer Homebrew can track. Guarded so a missing zip (CLI dist
-# disabled / not built) leaves the app upload flow untouched.
+# Attach the standalone CLI zip alongside the DMG/appcast on the same release
+# (the Homebrew formula pins its versioned URL). Guarded so a missing zip (CLI
+# dist disabled / not built) leaves the app upload flow untouched.
 upload_cli_artifact() {
   local version="$1"
   [[ "$APPSHOTS_CLI_DIST" == "1" ]] || { log_info "standalone CLI dist disabled; skipping CLI upload"; return 0; }
@@ -533,12 +533,9 @@ upload_cli_artifact() {
     log_info "standalone CLI zip not found for v$version; skipping CLI upload"
     return 0
   fi
-  local cli_fname
-  cli_fname="$(basename "$cli_zip")"
-  log_step "uploading standalone CLI to R2 ($RELEASE_ENVIRONMENT)..."
-  r2_put "$cli_zip" "${RELEASE_ENVIRONMENT}/${cli_fname}" "application/zip"
-  r2_put "$cli_zip" "${RELEASE_ENVIRONMENT}/${CLI_NAME}-latest-${CLI_ARCH}.zip" "application/zip"
-  log_ok "uploaded standalone CLI: $cli_fname"
+  log_step "attaching standalone CLI to the v$version release..."
+  gh_release_put "v$version" "$cli_zip"
+  log_ok "published standalone CLI: $(basename "$cli_zip")"
 }
 
 # ----------------------------------------------------------------------------- phases
