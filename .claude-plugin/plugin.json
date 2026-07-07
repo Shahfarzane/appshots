@@ -4,7 +4,7 @@
   "description": "Capture macOS app context for Claude Code and coding agents. Takes screenshot + accessibility tree snapshots and stores them for reference by CLI and MCP tools.",
   "author": {
     "name": "Shah Farzane",
-    "email": "shahinfarzane90@gmail.com",
+    "email": "hey@nerd.ceo",
     "url": "https://github.com/Shahfarzane"
   },
   "homepage": "https://github.com/Shahfarzane/appshots",
