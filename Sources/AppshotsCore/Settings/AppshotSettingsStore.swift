@@ -126,9 +126,7 @@ public final class AppshotSettingsStore: @unchecked Sendable {
         }
         do {
             let data = try Data(contentsOf: configURL)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(AppshotSettings.self, from: data)
+            return try AppshotJSON.decoder.decode(AppshotSettings.self, from: data)
         } catch {
             AppLog.store.error("settings load failed, using defaults: \(error.localizedDescription, privacy: .public)")
             return .defaults

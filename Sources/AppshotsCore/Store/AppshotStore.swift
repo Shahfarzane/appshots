@@ -727,9 +727,7 @@ public struct AppshotStore: Sendable {
     }
 
     private func jsonDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
+        AppshotJSON.decoder
     }
 
     private func selectedTextLength(in text: String) -> Int {

@@ -55,6 +55,30 @@ struct AppshotStoreTests {
         #expect(store.searchCaptures(query: "example.com").first?.id == record.id)
     }
 
+    @Test func `Record dates round-trip with sub-second precision and legacy whole-second files decode`() throws {
+        let rootURL = temporaryRootURL()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let store = AppshotStore(rootURL: rootURL)
+        var snapshotMetadata = metadata()
+        snapshotMetadata.createdAt = Date(timeIntervalSince1970: 1.789)
+        let record = try store.save(
+            target: FrontmostAppTarget(name: "Safari", bundleID: "com.apple.Safari", pid: 42),
+            output: CaptureOutput(text: "Window: Dates", metadata: snapshotMetadata)
+        )
+
+        let reloaded = try #require(store.latestCapture())
+        #expect(abs(reloaded.createdAt.timeIntervalSince(record.createdAt)) < 0.001)
+
+        // Index files written by older builds carry whole-second dates; the
+        // tolerant decoder must keep reading them.
+        let legacyJSON = try String(contentsOf: store.indexURL, encoding: .utf8)
+            .replacingOccurrences(of: "1970-01-01T00:00:01.789Z", with: "1970-01-01T00:00:01Z")
+        try legacyJSON.write(to: store.indexURL, atomically: true, encoding: .utf8)
+        let legacy = try #require(store.latestCapture())
+        #expect(legacy.createdAt == Date(timeIntervalSince1970: 1))
+    }
+
     @Test func `Save persists metrics when recorder is supplied`() throws {
         let rootURL = temporaryRootURL()
         defer { try? FileManager.default.removeItem(at: rootURL) }
