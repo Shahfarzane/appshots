@@ -72,7 +72,7 @@ func cuMultipleAttributes(_ element: AXUIElement, _ names: [String]) -> [String:
             // never silently degrade to empty/AXUnknown — same values, just one IPC per attribute.
             var fallback: [String: Any] = [:]
             for name in names {
-                AppshotCaptureMetricsContext.recordAXCall(kind: "attribute.\(name)")
+                // cuRawAttribute records the attribute.<name> metric itself.
                 if let value = cuRawAttribute(element, name: name) {
                     fallback[name] = value
                 }
