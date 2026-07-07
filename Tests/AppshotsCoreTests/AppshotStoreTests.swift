@@ -184,6 +184,17 @@ struct AppshotStoreTests {
         )
         #expect(paired.nonAppshotImageSources == ["regular.png"])
         #expect(paired.appshotContexts.first?.imageDataURL == "data:image/png;base64,abc")
+
+        // Trailing comment images stay out of the pairable pool even when the
+        // appshot images run short: with one appshot and only comment images
+        // remaining, nothing must be paired.
+        let commentOnly = AppshotPromptCodec.pairAppshots(
+            in: prompt,
+            imageSources: ["shot.png", "comment1.png", "comment2.png"],
+            commentImageCount: 2
+        )
+        #expect(commentOnly.appshotContexts.first?.imagePath == "shot.png")
+        #expect(commentOnly.nonAppshotImageSources == ["comment1.png", "comment2.png"])
     }
 
     @Test func `Payload can inline screenshot data URL`() throws {
@@ -260,7 +271,9 @@ struct AppshotStoreTests {
         )
 
         #expect(line.contains("URL: example.com/path"))
-        #expect(line.contains("[truncated 10 chars]"))
+        // 10 chars over the limit + the 24-char suffix allowance trimmed from
+        // the kept prefix: the label reports every char actually omitted.
+        #expect(line.contains("[truncated 34 chars]"))
     }
 
     @Test func `Appshot compression preserves Mail sized stored screenshots`() {

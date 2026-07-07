@@ -48,7 +48,10 @@ enum AppshotSnapshotRenderer {
     private static func renderedRows(for nodes: [AXNode], surface: String) -> [RenderedRow] {
         guard nodes.isEmpty == false else { return [] }
 
-        let byIndex = Dictionary(uniqueKeysWithValues: nodes.map { ($0.index, $0) })
+        // Keyed tolerantly: `accessibility_tree.json` is re-decoded from disk
+        // (documented external layout), so a duplicate node index in a
+        // hand-edited or partially written file must degrade, not trap.
+        let byIndex = Dictionary(nodes.map { ($0.index, $0) }, uniquingKeysWith: { first, _ in first })
         let childrenByParent = Dictionary(grouping: nodes, by: \.parentIndex)
         let roots = nodes.filter { node in
             guard let parentIndex = node.parentIndex else { return true }
@@ -130,7 +133,7 @@ enum AppshotSnapshotRenderer {
         includeElementIndexes: Bool,
         preserveTextAreaNewlines: Bool
     ) -> String {
-        let byIndex = Dictionary(uniqueKeysWithValues: nodes.map { ($0.index, $0) })
+        let byIndex = Dictionary(nodes.map { ($0.index, $0) }, uniquingKeysWith: { first, _ in first })
         let selectedNodes = nodes
             .filter { $0.selected == true && isSelectionSummaryRole($0.role) }
             .filter { node in
