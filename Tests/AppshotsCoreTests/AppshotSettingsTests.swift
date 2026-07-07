@@ -95,6 +95,20 @@ struct AppshotSettingsTests {
         #expect(AppshotSettings.registryKey("captureSound")?.get(settings) == "true")
     }
 
+    @Test func `Registry round-trips the post-capture send target`() throws {
+        var settings = AppshotSettings.defaults
+        #expect(AppshotSettings.registryKey("postCaptureSendTarget")?.get(settings) == "")
+
+        try setRegistry("postCaptureSendTarget", " com.anthropic.claudefordesktop ", into: &settings)
+        #expect(settings.postCaptureSendTarget == "com.anthropic.claudefordesktop")
+        #expect(AppshotSettings.registryKey("postCaptureSendTarget")?.get(settings) == "com.anthropic.claudefordesktop")
+
+        // Setting the rendered default ("") maps back to nil, so `config unset`
+        // and an explicit empty set both disable the step.
+        try setRegistry("postCaptureSendTarget", "", into: &settings)
+        #expect(settings.postCaptureSendTarget == nil)
+    }
+
     // MARK: - Registry validation (invalid set throws)
 
     @Test func `Registry rejects a non-numeric trigger key`() {

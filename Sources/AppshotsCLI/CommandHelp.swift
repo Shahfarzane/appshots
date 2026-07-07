@@ -93,7 +93,9 @@ enum CommandHelp {
             Read/write the shared settings in ~/.appshots/config.json (a running GUI
             live-reloads). Keys: triggerKey, captureSound, copyOnCapture,
             onboardingCompleted, startupMode (none|gui|headless), autoUpdate,
-            showInDock, mcpDefaultScope (user|project), mcpLastProjectDirectory.
+            showInDock, mcpDefaultScope (user|project), mcpLastProjectDirectory,
+            postCaptureSendTarget (bundle id pasted into after each hot-key
+            capture, e.g. com.anthropic.claudefordesktop; empty disables).
             """
         case "trigger":
             return """

@@ -47,6 +47,12 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
     /// The last project directory used for project-scoped MCP registration, if any.
     public var mcpLastProjectDirectory: String?
 
+    /// Bundle identifier of an app to send each hot-key capture to: after the
+    /// capture lands on the clipboard, the app is activated and Cmd+V is
+    /// synthesized so the appshot appears in its composer (e.g. Claude
+    /// Desktop, `com.anthropic.claudefordesktop`). `nil` disables the step.
+    public var postCaptureSendTarget: String?
+
     public init(
         triggerKey: [UInt16] = [58, 61],
         captureSound: Bool = true,
@@ -56,7 +62,8 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         autoUpdate: Bool = true,
         showInDock: Bool = false,
         mcpDefaultScope: String = "user",
-        mcpLastProjectDirectory: String? = nil
+        mcpLastProjectDirectory: String? = nil,
+        postCaptureSendTarget: String? = nil
     ) {
         self.triggerKey = triggerKey
         self.captureSound = captureSound
@@ -67,6 +74,7 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         self.showInDock = showInDock
         self.mcpDefaultScope = mcpDefaultScope
         self.mcpLastProjectDirectory = mcpLastProjectDirectory
+        self.postCaptureSendTarget = postCaptureSendTarget
     }
 
     /// The factory defaults used for brand-new users / when no file exists.
@@ -90,6 +98,7 @@ public struct AppshotSettings: Codable, Sendable, Equatable {
         showInDock = (try? container.decodeIfPresent(Bool.self, forKey: .showInDock)) ?? defaults.showInDock
         mcpDefaultScope = (try? container.decodeIfPresent(String.self, forKey: .mcpDefaultScope)) ?? defaults.mcpDefaultScope
         mcpLastProjectDirectory = (try? container.decodeIfPresent(String.self, forKey: .mcpLastProjectDirectory)) ?? defaults.mcpLastProjectDirectory
+        postCaptureSendTarget = (try? container.decodeIfPresent(String.self, forKey: .postCaptureSendTarget)) ?? defaults.postCaptureSendTarget
     }
 }
 
@@ -180,6 +189,14 @@ public extension AppshotSettings {
             set: { settings, raw in
                 let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
                 settings.mcpLastProjectDirectory = trimmed.isEmpty ? nil : trimmed
+            }
+        ),
+        AppshotSettingKey(
+            key: "postCaptureSendTarget",
+            get: { $0.postCaptureSendTarget ?? "" },
+            set: { settings, raw in
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                settings.postCaptureSendTarget = trimmed.isEmpty ? nil : trimmed
             }
         ),
     ]
