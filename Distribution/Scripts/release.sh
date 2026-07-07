@@ -2,7 +2,7 @@
 #
 # release.sh — Appshots macOS release pipeline (Developer ID sign + notarize + Sparkle + Cloudflare R2).
 #
-# Consolidates the former DevKit/Scripts/* chain (publish-with-build, workspace_archive,
+# Consolidates the former Distribution/Scripts/* chain (publish-with-build, workspace_archive,
 # sign-release-app, publish-submit-notary, common_package, publish-submit-r2, the config/
 # version/shell helpers) into one script. Styled-DMG layout is still delegated to create-dmg.mjs.
 #
@@ -18,8 +18,8 @@
 # (so the published build number — which is read back from the live appcast — advances exactly once).
 #
 # Signing identity + notary credentials are read from the keychain that the workflow restores
-# to DevKit/Keychain/Developer-ID-Keychain.keychain; the Sparkle EdDSA private key from
-# DevKit/Keychain/SparkleKeys/private-key.txt.
+# to Distribution/Keychain/Developer-ID-Keychain.keychain; the Sparkle EdDSA private key from
+# Distribution/Keychain/SparkleKeys/private-key.txt.
 
 set -euo pipefail
 
@@ -53,7 +53,7 @@ APPSHOTS_CLI_DIST="${APPSHOTS_CLI_DIST:-1}"
 
 # R2 key prefix + public-URL path segment (…/<RELEASE_ENVIRONMENT>/appcast.xml).
 RELEASE_ENVIRONMENT="${RELEASE_ENVIRONMENT:-appshots}"
-PUBLIC_BASE_URL="${CLOUDFLARE_R2_PUBLIC_BASE_URL:-https://persist.nerd.ceo}"
+PUBLIC_BASE_URL="${CLOUDFLARE_R2_PUBLIC_BASE_URL:-https://updates.nerd.ceo}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL%/}"
 
 # ----------------------------------------------------------------------------- logging / paths

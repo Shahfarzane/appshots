@@ -1,0 +1,11 @@
+name = "appshots-updates-proxy"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+routes = [
+  { pattern = "updates.nerd.ceo/*", zone_id = "cd9a826c340f02242072cd9ba9710837" }
+]
+
+[[r2_buckets]]
+binding = "UPDATES"
+bucket_name = "appshots-updates"

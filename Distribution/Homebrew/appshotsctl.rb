@@ -5,7 +5,7 @@
 # ships with its own stable TCC identity (CFBundleIdentifier
 # ceo.nerd.appshots.cli), so Accessibility / Screen Recording grants persist.
 #
-# The formula points at the notarized zip produced by DevKit/Scripts/release.sh
+# The formula points at the notarized zip produced by Distribution/Scripts/release.sh
 # and published to R2 under the appshots channel. Until the first artifact is
 # published, the sha256 below is a CLEARLY-MARKED PLACEHOLDER — replace it with
 # the real digest of the published zip:
@@ -17,7 +17,7 @@ class Appshotsctl < Formula
   desc "Standalone CLI + MCP server that sends macOS app context to coding agents"
   homepage "https://github.com/Shahfarzane/appshots"
   version "0.2.0"
-  url "https://persist.nerd.ceo/appshots/appshotsctl-#{version}-arm64.zip"
+  url "https://updates.nerd.ceo/appshots/appshotsctl-#{version}-arm64.zip"
   # PLACEHOLDER sha256 — replace with the digest of the published notarized zip.
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
