@@ -64,6 +64,13 @@ let package = Package(
                 "AppshotsCore",
             ]
         ),
+        .testTarget(
+            name: "AppshotsCLITests",
+            dependencies: [
+                "AppshotsCLI",
+                "AppshotsCore",
+            ]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

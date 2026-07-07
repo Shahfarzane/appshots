@@ -75,7 +75,9 @@ final class AppshotMCPServer {
         }
     }
 
-    private func handle(method: String, params: [String: Any]) throws -> [String: Any] {
+    /// Internal (not private) so the MCP contract tests can drive the JSON-RPC
+    /// dispatch path directly without a stdio round-trip.
+    func handle(method: String, params: [String: Any]) throws -> [String: Any] {
         switch method {
         case "initialize":
             return [
