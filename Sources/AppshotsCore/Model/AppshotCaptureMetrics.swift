@@ -96,8 +96,12 @@ public final class AppshotCaptureMetricsRecorder: @unchecked Sendable {
         ended: UInt64,
         detail: String? = nil
     ) {
-        let startOffset = Double(started - monotonicStart) / 1_000_000
-        let duration = Double(ended - started) / 1_000_000
+        // Signed math, clamped: a phase timestamped before this recorder existed
+        // (e.g. a timed-out background task from a previous capture reporting
+        // into the currently installed recorder) must not trap on unsigned
+        // underflow — record it at offset 0 instead of crashing the process.
+        let startOffset = max(0, (Double(started) - Double(monotonicStart)) / 1_000_000)
+        let duration = max(0, (Double(ended) - Double(started)) / 1_000_000)
         lock.withLock {
             metrics.phases.append(CapturePhaseMetric(
                 name: name,
@@ -151,8 +155,12 @@ enum AppshotCaptureMetricsContext {
         _ recorder: AppshotCaptureMetricsRecorder?,
         _ body: () throws -> T
     ) rethrows -> T {
+        // Restore the previously installed recorder rather than clearing to
+        // nil, so an overlapping capture's scope can't strip the outer
+        // capture's recorder and silently drop its remaining phases.
+        let previous = state.current
         state.set(recorder)
-        defer { state.set(nil) }
+        defer { state.set(previous) }
         return try body()
     }
 
