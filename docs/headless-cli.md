@@ -13,7 +13,7 @@ Pick whichever fits your setup:
 
 - **Standalone release artifact (recommended for GUI-less once published):**
   `appshotsctl-<version>-arm64.zip`, signed, notarized, with its own stable TCC
-  identity (`ceo.nerd.appshots.cli`). The Homebrew formula in `DevKit/Homebrew/`
+  identity (`ceo.nerd.appshots.cli`). The Homebrew formula in `Distribution/Homebrew/`
   is installable only after its URL and sha256 point at a published zip.
 - **App-bundled helper:** `/Applications/Appshots.app/Contents/Helpers/appshotsctl`.
 - **Local build:** `swift build` → `.build/debug/appshotsctl`.

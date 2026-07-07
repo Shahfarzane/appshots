@@ -34,13 +34,13 @@ Build/
 artifacts/
 
 # --- Signing / secrets ---
-DevKit/Keychain/
+Distribution/Keychain/
 *.keychain
 *.p12
 *.mobileprovision
 .env
 .env.*
 
-# --- DevKit Node tooling ---
-DevKit/Scripts/node_modules/
-DevKit/Scripts/package-lock.json
+# --- Distribution Node tooling ---
+Distribution/Scripts/node_modules/
+Distribution/Scripts/package-lock.json

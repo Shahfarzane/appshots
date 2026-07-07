@@ -45,11 +45,11 @@ jobs:
           test -n "$DEVELOPER_ID_KEYCHAIN_GZIP_BASE64"
           test -n "$KEYCHAIN_PASSWORD"
           test -n "$SPARKLE_PRIVATE_KEY"
-          mkdir -p DevKit/Keychain/SparkleKeys
-          printf "%s" "$DEVELOPER_ID_KEYCHAIN_GZIP_BASE64" | base64 --decode | gunzip > DevKit/Keychain/Developer-ID-Keychain.keychain
-          printf "%s" "$SPARKLE_PRIVATE_KEY" > DevKit/Keychain/SparkleKeys/private-key.txt
-          chmod 600 DevKit/Keychain/Developer-ID-Keychain.keychain
-          chmod 600 DevKit/Keychain/SparkleKeys/private-key.txt
+          mkdir -p Distribution/Keychain/SparkleKeys
+          printf "%s" "$DEVELOPER_ID_KEYCHAIN_GZIP_BASE64" | base64 --decode | gunzip > Distribution/Keychain/Developer-ID-Keychain.keychain
+          printf "%s" "$SPARKLE_PRIVATE_KEY" > Distribution/Keychain/SparkleKeys/private-key.txt
+          chmod 600 Distribution/Keychain/Developer-ID-Keychain.keychain
+          chmod 600 Distribution/Keychain/SparkleKeys/private-key.txt
 
       - name: Generate Xcode project
         run: |
@@ -59,7 +59,7 @@ jobs:
       - name: Build, sign, notarize, package
         id: build
         timeout-minutes: 45
-        run: DevKit/Scripts/release.sh build
+        run: Distribution/Scripts/release.sh build
 
       - name: Create or update GitHub release
         uses: softprops/action-gh-release@v2
@@ -72,7 +72,7 @@ jobs:
           generate_release_notes: true
 
       - name: Publish Sparkle appcast and DMG to R2
-        run: DevKit/Scripts/release.sh upload
+        run: Distribution/Scripts/release.sh upload
 
       - name: Upload release debug artifacts on failure
         if: failure()
