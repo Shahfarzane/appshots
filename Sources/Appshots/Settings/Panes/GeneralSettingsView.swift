@@ -40,20 +40,26 @@ struct GeneralSettingsView: View {
                 LuminareToggle("Show in Dock", isOn: $model.showInDock)
 
                 // Codex-style handoff: after a hot-key capture, activate the
-                // chosen app and paste the appshot into its composer.
+                // chosen app and paste the appshot into its composer. Styled
+                // like the MCP scope row: Luminare buttons, active highlighted.
                 LuminareCompose {
-                    Picker("", selection: sendTargetSelection) {
-                        Text("Do nothing").tag("")
-                        Text("Claude Desktop").tag(PostCaptureSender.claudeDesktopBundleID)
-                        if let custom = customSendTarget {
-                            Text(displayName(forBundleID: custom)).tag(custom)
+                    HStack(spacing: 8) {
+                        sendTargetButton("Off", target: nil)
+                        sendTargetButton("Claude Desktop", target: PostCaptureSender.claudeDesktopBundleID)
+
+                        Button {
+                            chooseSendTargetApp()
+                        } label: {
+                            Text(customSendTarget.map(displayName(forBundleID:)) ?? "Other…")
+                                .frame(height: 32)
+                                .padding(.horizontal, 12)
                         }
-                        Text("Choose App…").tag(Self.chooseAppTag)
+                        .buttonStyle(.luminare(overrideIsHovering: customSendTarget != nil))
+                        .luminareCornerRadius(8)
+                        .fixedSize()
                     }
-                    .labelsHidden()
-                    .fixedSize()
                 } label: {
-                    Text("Send capture to")
+                    Text("Send to")
                 }
             }
 
@@ -85,11 +91,8 @@ struct GeneralSettingsView: View {
 
     // MARK: - Send-capture-to picker
 
-    /// Sentinel tag that opens the app chooser instead of storing a value.
-    private static let chooseAppTag = "__choose__"
-
     /// The configured target when it isn't one of the built-in options, so the
-    /// picker can show it as its own entry.
+    /// "Other…" button can show the chosen app's name highlighted.
     private var customSendTarget: String? {
         guard let target = model.postCaptureSendTarget,
               target != PostCaptureSender.claudeDesktopBundleID
@@ -99,17 +102,19 @@ struct GeneralSettingsView: View {
         return target
     }
 
-    private var sendTargetSelection: Binding<String> {
-        Binding(
-            get: { model.postCaptureSendTarget ?? "" },
-            set: { newValue in
-                if newValue == Self.chooseAppTag {
-                    chooseSendTargetApp()
-                } else {
-                    model.postCaptureSendTarget = newValue.isEmpty ? nil : newValue
-                }
-            }
-        )
+    /// A fixed-choice segment button; the active target renders highlighted,
+    /// matching the MCP pane's scope selector.
+    private func sendTargetButton(_ title: String, target: String?) -> some View {
+        Button {
+            model.postCaptureSendTarget = target
+        } label: {
+            Text(title)
+                .frame(height: 32)
+                .padding(.horizontal, 12)
+        }
+        .buttonStyle(.luminare(overrideIsHovering: model.postCaptureSendTarget == target && customSendTarget == nil))
+        .luminareCornerRadius(8)
+        .fixedSize()
     }
 
     /// Picks an app bundle from /Applications and stores its bundle identifier.
