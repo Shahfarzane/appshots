@@ -36,6 +36,7 @@ enum AppshotDaemon {
     private static var signalSources: [DispatchSourceSignal] = []
     private static let settingsStore = AppshotSettingsStore()
     private static var copyOnCapture = false
+    private static var postCaptureSendTarget: String?
 
     /// Brings up the headless run loop and blocks on it. Returns only via the
     /// signal handlers (which call `exit`), or an early clean exit when the
@@ -68,6 +69,7 @@ enum AppshotDaemon {
         checkPermissions()
 
         copyOnCapture = settings.copyOnCapture
+        postCaptureSendTarget = settings.postCaptureSendTarget
         let triggerKey = triggerKeySet(from: settings)
 
         let monitor = AppshotsHotKeyMonitor(triggerKey: triggerKey) {
@@ -97,8 +99,13 @@ enum AppshotDaemon {
     private static func performCapture() {
         do {
             let record = try AppshotCaptureService.captureFrontmostApplication()
-            if copyOnCapture {
+            // The send step pastes from the clipboard, so a configured target
+            // forces the copy even when copyOnCapture is off.
+            if copyOnCapture || postCaptureSendTarget != nil {
                 PasteboardWriter.copyAppshotMarkup(for: record)
+            }
+            if let target = postCaptureSendTarget {
+                Task { @MainActor in await PostCaptureSender.send(toBundleID: target) }
             }
             AppLog.lifecycle.notice("daemon capture saved id=\(record.id, privacy: .public) copied=\(copyOnCapture, privacy: .public)")
         } catch {
@@ -126,6 +133,7 @@ enum AppshotDaemon {
         }
 
         copyOnCapture = settings.copyOnCapture
+        postCaptureSendTarget = settings.postCaptureSendTarget
         let triggerKey = triggerKeySet(from: settings)
         monitor?.updateTriggerKey(triggerKey)
         AppLog.lifecycle.notice("daemon settings reloaded trigger=\(Array(triggerKey).sorted().map(String.init).joined(separator: ","), privacy: .public) copied=\(copyOnCapture, privacy: .public)")

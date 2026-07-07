@@ -132,7 +132,9 @@ appshotsctl update auto on|off|status     # Sparkle auto-update toggle
 appshotsctl onboarding status             # Accessibility + Screen Recording + onboarding state
 ```
 
-Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `showInDock`, `mcpDefaultScope`, `mcpLastProjectDirectory`.
+Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `showInDock`, `mcpDefaultScope`, `mcpLastProjectDirectory`, `postCaptureSendTarget`.
+
+`postCaptureSendTarget` is the Codex-style composer handoff: set it to an app's bundle id (e.g. `com.anthropic.claudefordesktop` for Claude Desktop) and every hot-key capture is copied, the app is activated, and Cmd+V is synthesized so the appshot lands in its input box. Also configurable in the GUI under Settings → General → "Send capture to". Empty disables it.
 
 Exit codes are `0` (ok), `1` (failure), and `2` (usage error / not found).
 
