@@ -664,7 +664,7 @@ enum AccessibilityCaptureEngine {
             let children: [PendingNode]
         }
 
-        var visited = Set<CFHashCode>()
+        var visited = Set<AXElementKey>()
 
         func build(
             _ element: AXUIElement,
@@ -677,7 +677,7 @@ enum AccessibilityCaptureEngine {
                 return nil
             }
 
-            let identifier = CFHash(element)
+            let identifier = AXElementKey(element: element)
             if visited.contains(identifier) {
                 return nil
             }

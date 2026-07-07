@@ -2,6 +2,22 @@ import AppKit
 import ApplicationServices
 import Foundation
 
+/// Hashable identity for visited-sets of `AXUIElement`s. Equality is `CFEqual`
+/// with `CFHash` only as the hash, so a hash collision between two distinct
+/// elements can't be mistaken for "already visited" and silently drop an
+/// entire subtree (or skip a menu candidate) from the capture.
+struct AXElementKey: Hashable {
+    let element: AXUIElement
+
+    static func == (lhs: AXElementKey, rhs: AXElementKey) -> Bool {
+        CFEqual(lhs.element, rhs.element)
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(CFHash(element))
+    }
+}
+
 func cuRawAttribute(_ element: AXUIElement, name: String) -> Any? {
     AccessibilityCaptureEngine.runAXRead {
         AppshotCaptureMetricsContext.recordAXCall(kind: "attribute.\(name)")
