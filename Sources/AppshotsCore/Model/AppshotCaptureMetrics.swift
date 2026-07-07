@@ -96,8 +96,12 @@ public final class AppshotCaptureMetricsRecorder: @unchecked Sendable {
         ended: UInt64,
         detail: String? = nil
     ) {
-        let startOffset = Double(started - monotonicStart) / 1_000_000
-        let duration = Double(ended - started) / 1_000_000
+        // Signed math, clamped: a phase timestamped before this recorder existed
+        // (e.g. a timed-out background task from a previous capture reporting
+        // into the currently installed recorder) must not trap on unsigned
+        // underflow — record it at offset 0 instead of crashing the process.
+        let startOffset = max(0, (Double(started) - Double(monotonicStart)) / 1_000_000)
+        let duration = max(0, (Double(ended) - Double(started)) / 1_000_000)
         lock.withLock {
             metrics.phases.append(CapturePhaseMetric(
                 name: name,
@@ -144,6 +148,19 @@ public final class AppshotCaptureMetricsRecorder: @unchecked Sendable {
     }
 }
 
+/// Process-global recorder slot for the capture pipeline's untargeted metric
+/// hooks (`mark`/`measure` calls deep in the engine that have no recorder
+/// parameter).
+///
+/// Known limitation: this is a single slot, not a task-local. Two captures
+/// running concurrently on different threads in one process would attribute
+/// each other's phases (a `@TaskLocal` can't fix that — the engine hops
+/// through dispatch queues, which don't propagate task locals). Today
+/// in-process captures are serialized (GUI `isCapturing` gate, MCP serial
+/// loop, one-shot CLI), and `recordPhase` clamps rather than traps on
+/// foreign-epoch timestamps, so the residual risk is misattributed telemetry,
+/// not a crash. Fully fixing it means threading the recorder through the
+/// engine explicitly.
 enum AppshotCaptureMetricsContext {
     private static let state = State()
 
@@ -151,8 +168,12 @@ enum AppshotCaptureMetricsContext {
         _ recorder: AppshotCaptureMetricsRecorder?,
         _ body: () throws -> T
     ) rethrows -> T {
+        // Restore the previously installed recorder rather than clearing to
+        // nil, so an overlapping capture's scope can't strip the outer
+        // capture's recorder and silently drop its remaining phases.
+        let previous = state.current
         state.set(recorder)
-        defer { state.set(nil) }
+        defer { state.set(previous) }
         return try body()
     }
 

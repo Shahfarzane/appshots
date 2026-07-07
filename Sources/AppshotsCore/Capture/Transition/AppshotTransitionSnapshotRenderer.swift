@@ -149,9 +149,15 @@ public enum AppshotTransitionSnapshotRenderer {
         // 1. Cast the card's drop shadow by filling an opaque rounded rect. The
         //    screenshot below covers the fill, leaving only the soft shadow.
         context.saveGState()
+        // setShadow works in base (device) space and ignores the CTM: the
+        // context above is flipped top-left and scaled, so the offset must be
+        // negated (base +y is up in the exported image) and both offset and
+        // blur multiplied by the backing scale — matching the live overlay
+        // (AppshotTransitionOverlayWindow), which this PNG must mirror.
+        let shadowScale = max(request.backingScale, 1)
         context.setShadow(
-            offset: CGSize(width: 0, height: style.shadowYOffset),
-            blur: style.shadowRadius,
+            offset: CGSize(width: 0, height: -style.shadowYOffset * shadowScale),
+            blur: style.shadowRadius * shadowScale,
             color: CGColor(srgbRed: 0, green: 0, blue: 0, alpha: style.shadowOpacity)
         )
         context.addPath(cardPath)

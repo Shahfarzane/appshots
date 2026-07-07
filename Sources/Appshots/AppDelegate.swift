@@ -29,6 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.openSettings = { [weak self] in
             self?.settingsWindowController.show()
         }
+        model.isSettingsWindowVisible = { [weak self] in
+            self?.settingsWindowController.isWindowVisible ?? false
+        }
         model.openPreview = { [weak self] record in
             self?.previewWindowController.show(record)
         }
@@ -54,17 +57,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hotKeyMonitor?.updateTriggerKey(triggerKey)
         }
         model.setHotKeyMonitorActive = { [weak self] active in
+            guard let self else { return }
             if active {
-                self?.hotKeyMonitor?.start()
+                // Resume only when the GUI owns the chord for the current
+                // startup mode: a canceled trigger recording in headless mode
+                // must not re-arm alongside the daemon (double capture).
+                if model.shouldGUIOwnHotKey {
+                    hotKeyMonitor?.start()
+                }
             } else {
-                self?.hotKeyMonitor?.stop()
+                hotKeyMonitor?.stop()
             }
         }
         model.setHotKeyOwnership = { [weak self] own in
             guard let self else { return }
             if own {
-                hotKeyLock.tryAcquire()
-                hotKeyMonitor?.start()
+                armHotKeyOnceLockAcquired()
             } else {
                 // Yield to the headless daemon: stop listening, drop the lock.
                 hotKeyMonitor?.stop()
@@ -156,8 +164,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Arm only when this process owns the hot key for the current startup
         // mode; in headless mode the daemon owns it and the GUI stays silent.
         if model.shouldGUIOwnHotKey {
-            hotKeyLock.tryAcquire()
-            monitor.start()
+            armHotKeyOnceLockAcquired()
+        }
+    }
+
+    /// Arms the monitor only once the cross-process lock is actually held,
+    /// retrying briefly: during a headless→gui transition the daemon may still
+    /// hold the flock for a moment after the settings notification, and arming
+    /// without it would double-fire the chord (one press, two captures).
+    private func armHotKeyOnceLockAcquired(attempt: Int = 0) {
+        guard model.shouldGUIOwnHotKey else { return }
+        if hotKeyLock.tryAcquire() {
+            hotKeyMonitor?.start()
+        } else if attempt < 20 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.armHotKeyOnceLockAcquired(attempt: attempt + 1)
+            }
+        } else {
+            AppLog.lifecycle.error("hot-key lock still held elsewhere; GUI monitor not armed")
         }
     }
 

@@ -84,14 +84,30 @@ enum AppshotsCLI {
             }
             try printRecordOutput(record, mode: outputMode(from: rest), store: store)
         case "list":
-            let limit = CLIOptions.integer(rest, name: "--limit") ?? 20
+            // Clamp: `prefix(_:)` traps on a negative count (the MCP server
+            // clamps for the same reason).
+            let limit = max(0, CLIOptions.integer(rest, name: "--limit") ?? 20)
             try printJSON(Array(store.allCaptures().prefix(limit)))
         case "search":
-            let query = rest.filter { $0.hasPrefix("--") == false }.joined(separator: " ")
+            // Build the query from positional tokens only — skipping flags AND
+            // the value following a value-taking flag — so `search safari
+            // --limit 5` searches for "safari", not "safari 5".
+            var queryTokens: [String] = []
+            var index = rest.startIndex
+            while index < rest.endIndex {
+                let token = rest[index]
+                if token.hasPrefix("--") {
+                    if token == "--limit" { index = rest.index(after: index) }
+                } else {
+                    queryTokens.append(token)
+                }
+                index = rest.index(after: index)
+            }
+            let query = queryTokens.joined(separator: " ")
             guard query.isEmpty == false else {
                 throw CLIError(message: "Usage: appshotsctl search <query> [--limit N]", exitCode: 2)
             }
-            let limit = CLIOptions.integer(rest, name: "--limit") ?? 20
+            let limit = max(0, CLIOptions.integer(rest, name: "--limit") ?? 20)
             try printJSON(store.searchCaptures(query: query, limit: limit))
         case "delete":
             guard let id = rest.first else {
@@ -106,10 +122,13 @@ enum AppshotsCLI {
         case "doctor":
             try runDoctor(store: store)
         case "mcp":
-            if let subcommand = rest.first, MCPCommand.subcommands.contains(subcommand) {
-                try MCPCommand.run(arguments: rest, store: seededSettingsStore())
-            } else {
+            // Only a bare `mcp` starts the blocking stdio server; anything else
+            // routes to MCPCommand so a typo (`mcp instal`) hits its usage
+            // error instead of silently hanging on stdin.
+            if rest.isEmpty {
                 try AppshotMCPServer(store: store).run()
+            } else {
+                try MCPCommand.run(arguments: rest, store: seededSettingsStore())
             }
         case "daemon":
             // Hosts the headless AppKit run loop the global hot key needs; blocks
@@ -230,10 +249,18 @@ enum AppshotsCLI {
         print(try AppshotJSON.string(value))
     }
 
+    /// Serialises NDJSON lines: `--event-stream` writes from the caller's
+    /// thread, the engine's background delivery queue, and the timeout thread,
+    /// so each line must land as a single locked write or a consumer can see
+    /// two events spliced together.
+    private static let jsonLineLock = NSLock()
+
     private static func printJSONLine<T: Encodable>(_ value: T) throws {
-        let data = try AppshotJSON.lineEncoder.encode(value)
+        var data = try AppshotJSON.lineEncoder.encode(value)
+        data.append(UInt8(ascii: "\n"))
+        jsonLineLock.lock()
+        defer { jsonLineLock.unlock() }
         FileHandle.standardOutput.write(data)
-        FileHandle.standardOutput.write(Data("\n".utf8))
     }
 
     private static func printCaptureEventStream(timeoutSeconds: Double, arguments: [String]) throws {

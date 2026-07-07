@@ -133,7 +133,10 @@ enum AccessibilityCaptureEngine {
     private static func surfaceHintText(for snapshot: RuntimeAppSnapshot) -> String {
         switch snapshot.surfaceKind {
         case .window:
-            return "Surface: window. The state below is the app window plus the app's top-level menu bar items."
+            // No menu-bar promise: menu-bar nodes are only collected when a
+            // transient menu or status extra is present, so advertising them
+            // unconditionally misleads consuming agents on the common path.
+            return "Surface: window. The state below is the app window."
         case .status:
             return "Surface: status. No app window is available; the state below contains the app's status item."
         case .menu:
@@ -499,10 +502,13 @@ enum AccessibilityCaptureEngine {
             let started = DispatchTime.now()
             let appElement = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(appElement, 0.5)
-            // Same activation attributes the capture path applies, set early so the (expensive,
-            // first-time) enhanced-accessibility rebuild happens here instead of during capture.
-            _ = AXUIElementSetAttributeValue(appElement, "AXEnhancedUserInterface" as CFString, kCFBooleanTrue)
-            _ = AXUIElementSetAttributeValue(appElement, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+            // Read-only on purpose: prewarm fires on every frontmost-app change, and writing the
+            // activation attributes (AXEnhancedUserInterface / AXManualAccessibility) here would
+            // permanently mutate every app the user merely focuses — AXEnhancedUserInterface is
+            // the flag that breaks window placement in third-party apps, and AXManualAccessibility
+            // keeps full renderer accessibility (sustained CPU) enabled in Chromium/Electron apps
+            // that were never captured. The capture path applies them to the one app actually
+            // being captured (ChromiumAccessibilityActivation).
             // Touch the same shallow app/window attributes the real capture resolves before the
             // expensive full tree walk. This keeps prewarm cheap while moving first-window AX
             // connection and attribute-cache costs out of the hotkey path.
@@ -658,7 +664,7 @@ enum AccessibilityCaptureEngine {
             let children: [PendingNode]
         }
 
-        var visited = Set<CFHashCode>()
+        var visited = Set<AXElementKey>()
 
         func build(
             _ element: AXUIElement,
@@ -671,7 +677,7 @@ enum AccessibilityCaptureEngine {
                 return nil
             }
 
-            let identifier = CFHash(element)
+            let identifier = AXElementKey(element: element)
             if visited.contains(identifier) {
                 return nil
             }

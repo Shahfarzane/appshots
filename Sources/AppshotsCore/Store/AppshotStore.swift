@@ -192,25 +192,28 @@ public struct AppshotStore: Sendable {
     }
 
     public func deleteCapture(id: String) throws -> Bool {
-        var records = loadIndex()
-        guard let record = records.first(where: { $0.id == id }) else {
-            return false
+        try withIndexLock {
+            var records = loadIndex()
+            guard let record = records.first(where: { $0.id == id }) else {
+                return false
+            }
+
+            try removeCapture(record)
+            removeDayDirectoryIfEmpty(record.directoryURL.deletingLastPathComponent())
+            records.removeAll { $0.id == id }
+            let data = try jsonEncoder().encode(records)
+            try data.write(to: indexURL, options: .atomic)
+
+            if let latest = records.first,
+               let appshotText = try? String(contentsOf: latest.appshotTextURL, encoding: .utf8) {
+                try writeLatestPointers(record: latest, appshotText: appshotText)
+            } else {
+                try removeLatestPointers()
+            }
+
+            AppLog.store.notice("deleted appshot id=\(id, privacy: .public)")
+            return true
         }
-
-        try removeCapture(record)
-        records.removeAll { $0.id == id }
-        let data = try jsonEncoder().encode(records)
-        try data.write(to: indexURL, options: .atomic)
-
-        if let latest = records.first,
-           let appshotText = try? String(contentsOf: latest.appshotTextURL, encoding: .utf8) {
-            try writeLatestPointers(record: latest, appshotText: appshotText)
-        } else {
-            try removeLatestPointers()
-        }
-
-        AppLog.store.notice("deleted appshot id=\(id, privacy: .public)")
-        return true
     }
 
     public func deleteCaptures(ids: [String]) throws -> Int {
@@ -222,6 +225,12 @@ public struct AppshotStore: Sendable {
     }
 
     public func clearAll() throws {
+        try withIndexLock {
+            try clearAllLocked()
+        }
+    }
+
+    private func clearAllLocked() throws {
         for record in loadIndex() {
             try removeCapture(record)
         }
@@ -249,6 +258,27 @@ public struct AppshotStore: Sendable {
         output: CaptureOutput,
         structuredState: CapturedAppState? = nil,
         metricsRecorder: AppshotCaptureMetricsRecorder? = nil
+    ) throws -> AppshotRecord {
+        // Hold the cross-process index lock across the whole save: the capture
+        // number is reserved from the index max but only becomes visible once
+        // updateIndex writes, so concurrent savers (GUI, CLI, daemon) would
+        // otherwise reserve the same number — colliding capture IDs — and the
+        // later index write would silently drop the earlier record.
+        try withIndexLock {
+            try saveHoldingIndexLock(
+                target: target,
+                output: output,
+                structuredState: structuredState,
+                metricsRecorder: metricsRecorder
+            )
+        }
+    }
+
+    private func saveHoldingIndexLock(
+        target: FrontmostAppTarget,
+        output: CaptureOutput,
+        structuredState: CapturedAppState?,
+        metricsRecorder: AppshotCaptureMetricsRecorder?
     ) throws -> AppshotRecord {
         guard let metadata = output.metadata else {
             AppLog.store.error("save aborted: missing snapshot metadata for app=\(target.name, privacy: .public)")
@@ -613,6 +643,38 @@ public struct AppshotStore: Sendable {
         try data.write(to: indexURL, options: .atomic)
     }
 
+    /// Runs `body` holding an exclusive advisory `flock` on `<root>/index.lock`,
+    /// serialising `index.json` read-modify-write cycles across the GUI, CLI,
+    /// and daemon (separate fds also exclude threads within one process). The
+    /// atomic writes alone prevent torn files but not lost updates. Reads stay
+    /// lock-free. If the lock file cannot be opened, `body` still runs,
+    /// degrading to the pre-lock behavior rather than failing the operation.
+    private func withIndexLock<T>(_ body: () throws -> T) rethrows -> T {
+        try? fileManager.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        let lockURL = rootURL.appendingPathComponent("index.lock")
+        let fd = open(lockURL.path, O_CREAT | O_RDWR, 0o644)
+        guard fd >= 0 else {
+            AppLog.store.error("index lock open failed at \(lockURL.path, privacy: .public); proceeding without cross-process lock")
+            return try body()
+        }
+        defer { close(fd) }
+        flock(fd, LOCK_EX)
+        defer { flock(fd, LOCK_UN) }
+        return try body()
+    }
+
+    /// Removes a `snapshots/<date>/` day folder once a delete leaves it empty,
+    /// so day directories don't accumulate forever. Best-effort.
+    private func removeDayDirectoryIfEmpty(_ dayURL: URL) {
+        guard dayURL.deletingLastPathComponent().path == snapshotsURL.path,
+              let contents = try? fileManager.contentsOfDirectory(atPath: dayURL.path),
+              contents.isEmpty
+        else {
+            return
+        }
+        try? fileManager.removeItem(at: dayURL)
+    }
+
     private func loadIndex() -> [AppshotRecord] {
         guard fileManager.fileExists(atPath: indexURL.path),
               let data = try? Data(contentsOf: indexURL),
@@ -665,9 +727,7 @@ public struct AppshotStore: Sendable {
     }
 
     private func jsonDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
+        AppshotJSON.decoder
     }
 
     private func selectedTextLength(in text: String) -> Int {

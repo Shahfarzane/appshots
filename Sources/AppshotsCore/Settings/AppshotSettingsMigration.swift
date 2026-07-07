@@ -24,8 +24,12 @@ public enum AppshotSettingsMigration {
 
         let settings = migratedSettings()
         do {
-            try store.save(settings)
-            AppLog.store.notice("seeded config.json at \(store.configURL.path, privacy: .public)")
+            // Re-checks existence inside the config.lock critical section: a
+            // concurrent writer (e.g. `appshotsctl config set` racing first GUI
+            // launch) may have created the file since the unlocked check above.
+            if try store.seedIfAbsent(settings) {
+                AppLog.store.notice("seeded config.json at \(store.configURL.path, privacy: .public)")
+            }
         } catch {
             AppLog.store.error("failed to seed config.json: \(error.localizedDescription, privacy: .public)")
         }

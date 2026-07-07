@@ -261,8 +261,11 @@ enum AXRenderPolicy {
         guard value.count > limit else {
             return value
         }
-        let omitted = value.count - limit
+        // The kept prefix is shorter than `limit` (room for the suffix), so
+        // count the omission from the prefix length, not the limit — otherwise
+        // the label under-reports by the suffix allowance.
         let prefixLength = max(0, limit - 24)
+        let omitted = value.count - prefixLength
         let prefix = value.prefix(prefixLength)
         return "\(prefix)... [truncated \(omitted) chars]"
     }

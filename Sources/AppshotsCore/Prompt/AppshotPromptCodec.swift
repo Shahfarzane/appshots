@@ -106,7 +106,10 @@ public enum AppshotPromptCodec {
             return (imageSources, contexts)
         }
 
-        let pairCount = min(contexts.count, imageSources.count)
+        // Trailing comment images are never appshot screenshots: cap the
+        // pairable pool at the sources remaining once they're excluded, or a
+        // shortfall of appshot images would pair a comment image instead.
+        let pairCount = min(contexts.count, max(imageSources.count - commentImageCount, 0))
         let leadingImageCount = max(imageSources.count - commentImageCount - pairCount, 0)
         let pairedSources = Array(imageSources.dropFirst(leadingImageCount).prefix(pairCount))
         let pairedContexts = contexts.enumerated().map { index, context in
