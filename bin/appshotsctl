@@ -20,9 +20,10 @@ elif [[ -f "/usr/local/bin/appshotsctl" ]]; then
 # Check app bundle
 elif [[ -f "/Applications/Appshots.app/Contents/Helpers/appshotsctl" ]]; then
   resolved_binary="/Applications/Appshots.app/Contents/Helpers/appshotsctl"
-# Check system PATH
-elif command -v appshotsctl &> /dev/null; then
-  resolved_binary="$(command -v appshotsctl)"
+# Check system PATH — but never this resolver shim itself (e.g. the plugin's
+# bin/ dir on PATH), which would exec itself in an infinite loop
+elif candidate="$(command -v appshotsctl)" && [[ -n "$candidate" && ! "$candidate" -ef "$0" ]]; then
+  resolved_binary="$candidate"
 # Check repo release build
 elif [[ -f "${CLAUDE_PLUGIN_ROOT:-.}/.build/release/appshotsctl" ]]; then
   resolved_binary="${CLAUDE_PLUGIN_ROOT:-.}/.build/release/appshotsctl"
