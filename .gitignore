@@ -44,3 +44,6 @@ Distribution/Keychain/
 # --- Distribution Node tooling ---
 Distribution/Scripts/node_modules/
 Distribution/Scripts/package-lock.json
+
+# --- Wrangler CLI local cache ---
+.wrangler/
