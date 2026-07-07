@@ -75,16 +75,28 @@ final class AppshotMCPServer {
         }
     }
 
-    private func handle(method: String, params: [String: Any]) throws -> [String: Any] {
+    /// Internal (not private) so the MCP contract tests can drive the JSON-RPC
+    /// dispatch path directly without a stdio round-trip.
+    func handle(method: String, params: [String: Any]) throws -> [String: Any] {
         switch method {
         case "initialize":
             return [
                 "protocolVersion": Self.protocolVersion,
-                "capabilities": ["tools": [String: Any]()],
+                "capabilities": [
+                    "tools": [String: Any](),
+                    "prompts": [String: Any](),
+                ],
                 "serverInfo": ["name": "appshots", "version": Self.serverVersion],
             ]
         case "tools/list":
             return ["tools": MCPToolCatalog.tools]
+        case "prompts/list":
+            return ["prompts": MCPToolCatalog.prompts]
+        case "prompts/get":
+            let name = params["name"] as? String ?? ""
+            let arguments = params["arguments"] as? [String: Any] ?? [:]
+            AppLog.mcp.notice("prompt get name=\(name, privacy: .public)")
+            return try promptResult(name: name, arguments: arguments)
         case "tools/call":
             let name = params["name"] as? String ?? ""
             let arguments = params["arguments"] as? [String: Any] ?? [:]
@@ -113,7 +125,7 @@ final class AppshotMCPServer {
             let record = try AppshotCaptureService.captureFrontmostApplication()
             return try content(for: record, format: format)
         case "get_latest_appshot":
-            let format = arguments["format"] as? String ?? "prompt"
+            let format = arguments["format"] as? String ?? "codex"
             guard let record = store.latestCapture() else {
                 throw MCPToolError("No appshots captured yet.")
             }
@@ -148,6 +160,57 @@ final class AppshotMCPServer {
         default:
             throw MCPToolError("Unknown tool: \(name)")
         }
+    }
+
+    // MARK: - Prompts
+
+    /// Builds a `prompts/get` result: the appshot delivered as user-role
+    /// messages (the `<appshot>` text with the AX tree, then the screenshot as
+    /// image content), so invoking the prompt attaches the capture directly to
+    /// the user's message.
+    private func promptResult(name: String, arguments: [String: Any]) throws -> [String: Any] {
+        switch name {
+        case "latest-appshot":
+            guard let record = store.latestCapture() else {
+                throw MCPMethodError(
+                    code: -32602,
+                    message: "No appshots captured yet. Press the capture hot key or run `appshotsctl capture`, then try again."
+                )
+            }
+            return [
+                "description": "Latest appshot: \(record.appName)",
+                "messages": try promptMessages(for: record),
+            ]
+        case "appshot":
+            let record: AppshotRecord
+            if let app = arguments["app"] as? String,
+               app.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                let target = try AppshotCaptureService.resolveTarget(matching: app)
+                record = try AppshotCaptureService.capture(target: target)
+            } else {
+                record = try AppshotCaptureService.captureFrontmostApplication()
+            }
+            return [
+                "description": "Appshot of \(record.appName)",
+                "messages": try promptMessages(for: record),
+            ]
+        default:
+            throw MCPMethodError(code: -32602, message: "Unknown prompt: \(name)")
+        }
+    }
+
+    /// The appshot rendered as MCP prompt messages: one text message (the
+    /// model-facing `<appshot>` block including the AX tree) plus, when the
+    /// capture has a screenshot, one image message.
+    private func promptMessages(for record: AppshotRecord) throws -> [[String: Any]] {
+        let payload = try store.payload(for: record, includeImageData: false)
+        var messages: [[String: Any]] = [
+            ["role": "user", "content": textItem(payload.text)],
+        ]
+        if let path = payload.imagePath {
+            messages.append(["role": "user", "content": try imageItem(path: path)])
+        }
+        return messages
     }
 
     private func content(for record: AppshotRecord, format: String) throws -> [[String: Any]] {

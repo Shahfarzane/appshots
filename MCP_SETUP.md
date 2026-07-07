@@ -104,3 +104,14 @@ including per-binary Accessibility / Screen Recording grants.
 - `search_appshots`
 - `delete_appshot`
 - `doctor_appshots`
+
+## Available Prompts
+
+Prompts are user-invocable: MCP clients surface them as slash commands (Claude
+Code) or attach-menu entries (Claude Desktop), and the appshot lands directly
+in your message as text + image, with no tool round-trip.
+
+- `latest-appshot` — attach the most recent capture (press the hot key first)
+- `appshot` — capture now and attach; the optional `app` argument targets a
+  specific running app by name or bundle id (recommended: from a chat client
+  the frontmost app is usually the chat window itself)
