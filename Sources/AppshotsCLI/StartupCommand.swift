@@ -74,10 +74,17 @@ enum StartupCommand {
             print("          at ~/Library/LaunchAgents/\(LaunchAgentController.label).plist, then bootstrap it.")
             return
         }
+        // The mode must be headless *before* bootstrap launches the daemon (it
+        // exits cleanly, never to restart, if it starts under another mode), so
+        // persist first — but roll back on install failure: headless recorded
+        // with no agent installed leaves the chord owned by nobody (the GUI
+        // yields and no daemon exists).
+        let previousMode = store.load().startupMode
         try store.mutate { $0.startupMode = .headless }
         do {
             try LaunchAgentController().install()
         } catch let error as LaunchAgentError {
+            try? store.mutate { $0.startupMode = previousMode }
             throw CLIError(message: error.description, exitCode: 1)
         }
         print("startup mode set to headless; daemon LaunchAgent installed.")
