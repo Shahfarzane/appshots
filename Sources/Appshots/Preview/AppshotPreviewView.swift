@@ -120,6 +120,13 @@ struct AppshotPreviewView: View {
                     minMagnification: minZoom,
                     maxMagnification: maxZoom
                 )
+            } else if record.screenshotURL == nil {
+                // Text-only captures (no screenshot artifact) have nothing to
+                // load; a spinner here would spin forever.
+                Text("No screenshot captured")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().controlSize(.large)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -271,6 +278,10 @@ struct AppshotPreviewView: View {
             image = await Task.detached(priority: .userInitiated) {
                 NSImage(contentsOf: url)
             }.value
+        } else {
+            // Nothing to inspect in image mode; open on the text the capture
+            // actually has.
+            mode = .text
         }
         let axURL = record.axTextURL
         text = await Task.detached(priority: .utility) {

@@ -93,8 +93,10 @@ final class AppshotsUpdateManager: NSObject {
         self.installationBlock = nil
         pendingUpdateVersion = nil
         updateState = .checkForUpdate
+        // Sparkle's immediate-install handler installs AND relaunches the app
+        // itself (SPUUpdaterDelegate.h); relaunching here too would race the
+        // installer and spawn a second instance of the old bundle.
         installationBlock()
-        relaunchApp()
     }
 
     func runPrimaryAction() {
@@ -112,18 +114,6 @@ final class AppshotsUpdateManager: NSObject {
         let autoUpdate = AppshotSettingsStore().load().autoUpdate
         updater.automaticallyChecksForUpdates = autoUpdate
         updater.automaticallyDownloadsUpdates = autoUpdate
-    }
-
-    private func relaunchApp() {
-        let bundleURL = Bundle.main.bundleURL
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.createsNewApplicationInstance = true
-        NSWorkspace.shared.openApplication(at: bundleURL, configuration: configuration) { _, error in
-            if let error {
-                AppLog.updates.error("Sparkle relaunch failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-        NSApp.terminate(nil)
     }
 
     nonisolated static func log(_ message: String) {

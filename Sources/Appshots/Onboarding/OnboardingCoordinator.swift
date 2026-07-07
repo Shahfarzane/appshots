@@ -58,6 +58,10 @@ final class OnboardingCoordinator {
     private var activeGateIndex: Int?
     private var pollTimer: Timer?
     private var didBecomeActiveObserver: NSObjectProtocol?
+    /// Grant state per gate captured at `beginFlow()`, so `finish()` can tell
+    /// whether a relaunch-requiring gate was granted during this flow (possibly
+    /// out of band while another gate was active) and still owes the relaunch.
+    private var grantedAtFlowStart: [Bool] = []
 
     init(settingsStore: AppshotSettingsStore = AppshotSettingsStore()) {
         self.settingsStore = settingsStore
@@ -102,6 +106,7 @@ final class OnboardingCoordinator {
 
     private func beginFlow() {
         installDidBecomeActiveObserverIfNeeded()
+        grantedAtFlowStart = gates.map(\.isGranted)
 
         guard let index = firstUngrantedGateIndex() else {
             // Nothing left to grant — record completion and stop nagging.
@@ -169,7 +174,18 @@ final class OnboardingCoordinator {
 
     private func finish() {
         persistCompletionIfAllGranted()
-        teardown()
+        // Screen Recording granted during this flow while another gate was
+        // active (both toggles flipped in one System Settings visit) skips
+        // `handleActiveGateGranted`'s relaunch path — but this process still
+        // can't capture until relaunched, so the step must not be dropped.
+        let owesRelaunch = zip(gates, grantedAtFlowStart).contains { gate, wasGranted in
+            gate.requiresRelaunchAfterGrant && wasGranted == false && gate.isGranted
+        }
+        if owesRelaunch {
+            presentRelaunchStep()
+        } else {
+            teardown()
+        }
     }
 
     private func persistCompletionIfAllGranted() {
