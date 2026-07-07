@@ -148,6 +148,19 @@ public final class AppshotCaptureMetricsRecorder: @unchecked Sendable {
     }
 }
 
+/// Process-global recorder slot for the capture pipeline's untargeted metric
+/// hooks (`mark`/`measure` calls deep in the engine that have no recorder
+/// parameter).
+///
+/// Known limitation: this is a single slot, not a task-local. Two captures
+/// running concurrently on different threads in one process would attribute
+/// each other's phases (a `@TaskLocal` can't fix that — the engine hops
+/// through dispatch queues, which don't propagate task locals). Today
+/// in-process captures are serialized (GUI `isCapturing` gate, MCP serial
+/// loop, one-shot CLI), and `recordPhase` clamps rather than traps on
+/// foreign-epoch timestamps, so the residual risk is misattributed telemetry,
+/// not a crash. Fully fixing it means threading the recorder through the
+/// engine explicitly.
 enum AppshotCaptureMetricsContext {
     private static let state = State()
 
