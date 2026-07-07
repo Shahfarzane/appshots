@@ -134,7 +134,7 @@ appshotsctl onboarding status             # Accessibility + Screen Recording + o
 
 Config keys: `triggerKey`, `captureSound`, `copyOnCapture`, `onboardingCompleted`, `startupMode`, `autoUpdate`, `showInDock`, `mcpDefaultScope`, `mcpLastProjectDirectory`, `postCaptureSendTarget`.
 
-`postCaptureSendTarget` is the Codex-style composer handoff: set it to an app's bundle id (e.g. `com.anthropic.claudefordesktop` for Claude Desktop) and every hot-key capture activates the app and pastes the screenshot plus a one-line reference (`Attached appshot <id>. Full context: …/appshot.md`) into its input box — not the full AX-tree markup, which an agent fetches via the MCP tools or the file path when it needs it. The clipboard is left holding the standard full-markup copy afterwards. Also configurable in the GUI under Settings → General → "Send capture to". Empty disables it.
+`postCaptureSendTarget` is the Codex-style composer handoff: set it to an app's bundle id (e.g. `com.anthropic.claudefordesktop` for Claude Desktop) and every capture from the menu-bar app or the daemon (not the one-shot CLI) activates the app and pastes the screenshot plus a one-line reference (`Attached appshot <id>. Full context: …/appshot.md`) into its input box — not the full AX-tree markup, which an agent fetches via the MCP tools or the file path when it needs it. The clipboard is left holding the standard full-markup copy afterwards. Also configurable in the GUI under Settings → General → "Send capture to". Empty disables it.
 
 Exit codes are `0` (ok), `1` (failure), and `2` (usage error / not found).
 
@@ -189,7 +189,7 @@ appshotsctl mcp uninstall --scope user
 claude mcp add appshots -s user -- "/Applications/Appshots.app/Contents/Helpers/appshotsctl" mcp
 ```
 
-Use `-n` / `--dry-run` with `mcp install` or `mcp uninstall` to print the Claude CLI command without applying it. You can also enable MCP from the app's gear menu → **Enable MCP…**. See [MCP_SETUP.md](MCP_SETUP.md) for project scope and development paths.
+Use `-n` / `--dry-run` with `mcp install` or `mcp uninstall` to print the Claude CLI command without applying it. You can also enable MCP from the app: Settings → **MCP** tab → Install. See [MCP_SETUP.md](MCP_SETUP.md) for project scope and development paths.
 
 Tools:
 
@@ -209,3 +209,22 @@ Prompts (user-invocable — they surface as slash commands / attach-menu entries
 `take_appshot` and `get_latest_appshot` default to `format: "codex"`, the model-facing shape Codex expects: one text item with the `<appshot>` block plus one image item with the screenshot. Other supported MCP formats are `prompt`, `model_prompt`, `json`, `payload`, `context`, `events`, `image_path`, and `directory`. Use `format: "context"` for the first-class `AppshotContext` object, including app icon and transition snapshot data when available, or `format: "events"` for the capture status log. For local streaming integrations, `capture --event-stream` writes newline-delimited event JSON as capture phases are emitted.
 
 See [`MCP_SETUP.md`](MCP_SETUP.md) for Claude Desktop, Cursor, and CLI-agent examples.
+
+## Development
+
+SwiftPM package (Swift 6, strict concurrency, macOS 15+). `Appshots.xcodeproj` is generated — regenerate it with [`xcodegen`](https://github.com/yonaskolb/XcodeGen) after changing `project.yml`; never edit it by hand.
+
+```sh
+swift build                       # build everything (debug)
+swift test                        # run the test suite (Swift Testing)
+scripts/build-app.sh [release]    # assemble a runnable Appshots.app under .build/
+.build/debug/appshotsctl latest   # run the CLI
+```
+
+CI is intentionally local-first: run `swift build` + `swift test` on your machine, then record the green run on the pushed commit with [`gh signoff`](https://github.com/basecamp/gh-signoff) (the required check on `main`). GitHub Actions is reserved for releases: pushing a `v*` tag runs the sign / notarize / DMG / Sparkle pipeline in `.github/workflows/macos-release-production.yml`, driven by `DevKit/Scripts/release.sh`.
+
+See [AGENTS.md](AGENTS.md) for architecture notes and the conventions AI coding agents follow in this repo.
+
+## License
+
+[MIT](LICENSE)

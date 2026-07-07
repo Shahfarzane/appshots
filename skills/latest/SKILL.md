@@ -20,17 +20,19 @@ Invokes the `get_latest_appshot` MCP tool, which retrieves the most recent captu
 
 1. Reads the stable pointer `~/.appshots/latest.txt` to get the capture directory
 2. Loads the appshot prompt, screenshot, accessibility tree, and metadata
-3. Returns in the requested format (default: the full appshot markdown text)
+3. Returns in the requested format (default: `<appshot>` text + screenshot image)
 
 ## Output formats
 
 Pass `format` to customize the response:
 
-- `prompt` (default): the full appshot markdown with Codex `<appshot>` block
-- `codex`: `<appshot>` block + screenshot image for model input
+- `codex` (default): `<appshot>` block text item + screenshot image item
+- `prompt`: the full appshot markdown with Codex `<appshot>` block (text only)
 - `model_prompt`: model-ready prompt format
 - `context`: structured `AppshotContext` object with app icon and transition snapshot
 - `json`: machine-readable metadata
+- `payload`: JSON with the model prompt, image path, image data URL, and metadata
+- `events`: the capture status event log
 - `image_path`: path to the screenshot image on disk
 - `directory`: path to the capture directory
 

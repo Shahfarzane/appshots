@@ -27,7 +27,7 @@ Invokes the `doctor_appshots` MCP tool, which runs health checks over permission
 ## Output
 
 Returns a JSON array of health checks. Each check has:
-- `id`: the check name — one of `accessibility_permission`, `screen_recording_permission`, `storage_root`, `index`, `latest_capture`, `latest_prompt`, `latest_screenshot`
+- `name`: the check name — one of `accessibility_permission`, `screen_recording_permission`, `storage_root`, `index`, `latest_capture`, `latest_prompt`, `latest_screenshot`
 - `ok`: boolean — whether the check passed
 - `detail`: a human-readable explanation
 

@@ -34,6 +34,9 @@ Pass `format` to customize the response:
 - `model_prompt`: model-ready prompt format
 - `context`: structured `AppshotContext` object with metadata
 - `json`: machine-readable capture metadata
+- `payload`: JSON with the model prompt, image path, image data URL, and metadata
+- `events`: the capture status event log
+- `image_path`: path to the screenshot image on disk
 - `directory`: the capture directory path on disk
 
 ## Related

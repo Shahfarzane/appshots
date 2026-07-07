@@ -1,47 +1,48 @@
-# Signing secrets setup (GitHub Actions)
+# Release signing secrets (GitHub Actions)
 
-The release workflow needs three signing secrets that come from your Apple Developer identity and your
-Sparkle key. Run these on your Mac; values go straight to GitHub via `gh` (and 1Password via `op`) and
-never need to be pasted anywhere.
+Maintainer / fork setup for the `v*` tag release workflow
+(`.github/workflows/macos-release-production.yml`). The workflow signs and
+notarizes with material restored from GitHub Actions secrets; none of these
+exist on a fresh fork (and they must be re-created if the repo is ever
+recreated), so the release pipeline fails at "Restore signing material" until
+they are set.
 
-Repo: `Shahfarzane/appshots`. Developer ID team: **89S32876QM**
-(`Developer ID Application: Shahin Farzane (89S32876QM)`).
+Required secrets:
 
-## ✅ `SPARKLE_PRIVATE_KEY` — already done
+| Secret | What it is |
+|---|---|
+| `DEVELOPER_ID_KEYCHAIN_GZIP_BASE64` | A self-contained keychain (gzip + base64) holding the Developer ID Application identity and a stored `notarytool` credentials profile |
+| `KEYCHAIN_PASSWORD` | The password of that keychain |
+| `SPARKLE_PRIVATE_KEY` | The Sparkle EdDSA private key used to sign the appcast |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 upload credential (see [cloudflare-release-setup.md](cloudflare-release-setup.md), which also lists the non-secret `CLOUDFLARE_R2_*` variables) |
 
-A fresh Sparkle EdDSA keypair was generated (the repo shipped with a placeholder public key you didn't
-hold the private half of). Current state:
-- GitHub secret `SPARKLE_PRIVATE_KEY` is set.
-- `project.yml` `SUPublicEDKey` is repinned to `PRq99IaxC621L/e/dUIZLs48SAwBEvYZ2lhoiwrUBl0=`.
-- The private key lives in your **login Keychain** (re-exportable any time with `generate_keys -x`).
+## Sparkle EdDSA key
 
-**Back it up to 1Password** (run in your own terminal so the Touch ID prompt works — losing this key
-means you can never sign updates for already-installed clients):
+Generate a keypair with Sparkle's `generate_keys` (ships with the Sparkle
+distribution; a SwiftPM checkout builds it under
+`.build/**/artifacts/**/Sparkle/bin/generate_keys`). Then:
 
-```sh
-GK=.build/index-build/artifacts/sparkle/Sparkle/bin/generate_keys
-"$GK" -x /tmp/sparkle_private_key.txt
-op document create /tmp/sparkle_private_key.txt --title "Appshots Sparkle EdDSA private key"
-rm /tmp/sparkle_private_key.txt
-```
+- Set the private key as the `SPARKLE_PRIVATE_KEY` secret and back it up
+  somewhere durable (a password manager). Losing it means already-installed
+  clients can never verify another update.
+- Pin the matching public key as `SUPublicEDKey` in `project.yml`. The key
+  currently pinned there is the one release builds must match.
 
-## `DEVELOPER_ID_KEYCHAIN_GZIP_BASE64` + `KEYCHAIN_PASSWORD`
+## Developer ID keychain
 
-A self-contained keychain holding your Developer ID Application cert **and** a stored `notarytool`
-credentials profile, gzipped + base64-encoded. The workflow discovers the notary profile name by
-scanning the keychain, so the name you choose doesn't matter.
+Build a throwaway keychain containing the Developer ID Application identity
+plus a `notarytool` profile, then upload it. The workflow discovers the notary
+profile name by scanning the keychain, so the profile name is free-form.
 
-Prereqs:
-- Export your **Developer ID Application** identity from Keychain Access (login keychain) as a `.p12`:
-  right-click the identity → Export → `DeveloperID.p12`, set a password.
-- A notarization credential: an **app-specific password** (appleid.apple.com → Sign-In & Security) or an
-  **App Store Connect API key** (`.p8` + key id + issuer id).
-
-Store the sensitive inputs in 1Password and read them with `op` so nothing is hardcoded:
+Prereqs: your **Developer ID Application** identity exported as a `.p12`, and
+a notarization credential (an App Store Connect API key `.p8` + key id +
+issuer id, or an Apple ID app-specific password). Notarization requires the
+Apple Developer Program license agreement for the team to be current, or
+Apple returns HTTP 403.
 
 ```sh
 set -euo pipefail
-REPO=Shahfarzane/appshots
+REPO=<owner>/<repo>
 KCPW="$(openssl rand -base64 24)"
 KC="$PWD/build-release.keychain"
 
@@ -50,38 +51,32 @@ security set-keychain-settings "$KC"
 security unlock-keychain -p "$KCPW" "$KC"
 KC_FILE="$(ls -d "$KC"* | head -n1)"        # handles the macOS .keychain-db suffix
 
-# import the Developer ID identity (p12 password from 1Password)
+# Import the Developer ID identity. Read the p12 password from your password
+# manager rather than typing it into the shell.
 security import DeveloperID.p12 -k "$KC" \
-  -P "$(op read 'op://Private/Appshots DeveloperID p12/password')" \
+  -P "<p12-export-password>" \
   -T /usr/bin/codesign -T /usr/bin/productsign
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPW" "$KC"
 
-# store notarytool creds into the keychain (app-specific password from 1Password)
-xcrun notarytool store-credentials "appshots-notary" \
-  --apple-id "$(op read 'op://Private/Apple ID/username')" \
-  --team-id 89S32876QM \
-  --password "$(op read 'op://Private/Apple Notary/app-specific password')" \
+# Store notarytool credentials into the same keychain (API-key form shown).
+xcrun notarytool store-credentials "release-notary" \
+  --key AuthKey_<KEYID>.p8 --key-id <KEYID> --issuer <ISSUER-UUID> \
   --keychain "$KC"
 
-# push the two GitHub secrets (values never printed)
+# Push the two GitHub secrets (values never printed).
 gzip -c "$KC_FILE" | base64 | gh secret set DEVELOPER_ID_KEYCHAIN_GZIP_BASE64 --repo "$REPO"
 printf '%s' "$KCPW" | gh secret set KEYCHAIN_PASSWORD --repo "$REPO"
-
-# optional: stash the keychain password in 1Password too
-printf '%s' "$KCPW" | op item create --category password --title "Appshots release keychain password" password[password]=-
 
 security delete-keychain "$KC"
 rm -f DeveloperID.p12
 ```
 
-(Replace the `op://…` paths with your actual item/field references.)
-
 ## Verify
 
 ```sh
-gh secret list --repo Shahfarzane/appshots
+gh secret list --repo <owner>/<repo>
 # expect: KEYCHAIN_PASSWORD, DEVELOPER_ID_KEYCHAIN_GZIP_BASE64, SPARKLE_PRIVATE_KEY,
 #         CLOUDFLARE_R2_SECRET_ACCESS_KEY
 ```
 
-Then push a `v*` tag to run the release — the first true end-to-end test of the pipeline.
+Then push a `v*` tag to run the release pipeline end to end.

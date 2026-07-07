@@ -49,7 +49,9 @@ appshotsctl startup status                # mode + whether the LaunchAgent is in
 This writes `~/Library/LaunchAgents/ceo.nerd.appshots.cli.daemon.plist`
 (`RunAtLoad` + `KeepAlive`, running `appshotsctl daemon`), bootstraps it into the
 GUI domain via `launchctl` so it starts immediately, and sets
-`startupMode = headless`. stdout/stderr go to `~/.appshots/daemon.out.log` and
+`startupMode = headless`. If the LaunchAgent install fails, the previous
+`startupMode` is restored so the hot key is never left owned by nobody.
+stdout/stderr go to `~/.appshots/daemon.out.log` and
 `daemon.err.log`. Implemented in
 `Sources/AppshotsCore/Startup/LaunchAgentController.swift`.
 

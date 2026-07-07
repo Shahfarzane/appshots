@@ -29,13 +29,13 @@ Invokes the `list_appshots` MCP tool, which returns recent captures from the app
 
 ## Output
 
-Returns a JSON array of recent captures, each with:
+Returns a JSON array of serialized capture records; the key fields:
 - `id`: unique capture identifier
-- `app`: application name and bundle ID
-- `title`: window title
-- `url`: page URL if a browser capture
-- `timestamp`: when the capture was taken (ISO 8601)
-- `path`: directory path to access the full capture
+- `appName` / `bundleID`: the captured application
+- `windowTitle`: window title
+- `pageURL`: page URL if a browser capture
+- `createdAt`: when the capture was taken (ISO 8601)
+- `directoryPath`: directory path to access the full capture
 
 ## Related
 
