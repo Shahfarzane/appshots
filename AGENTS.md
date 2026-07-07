@@ -50,7 +50,7 @@ CI is local: run `swift build` + `swift test` on the machine, then record it wit
 (required check on `main`); `ci.yml` is manual-only (`workflow_dispatch`). `v*` tags
 build/sign/notarize a release on `macos-26`. The release workflow regenerates the Xcode project, then
 `Distribution/Scripts/release.sh build` signs/notarizes/staples the DMG and signs/notarizes the standalone
-CLI zip; `release.sh upload` publishes Sparkle/R2 artifacts. Run `swift test` before pushing.
+CLI zip; `release.sh upload` attaches the Sparkle appcast + immutable DMG to the GitHub Release. Run `swift test` before pushing.
 
 ## Gotchas (the ones that bite)
 
@@ -99,7 +99,7 @@ Sources/AppshotsCore/   library, by responsibility:
 Sources/Appshots/       menu-bar app (SwiftUI/AppKit + Luminare); Theme/Theme.swift; Vendor/PermissionFlow (vendored)
 Sources/AppshotsCLI/    appshotsctl CLI + MCP stdio server + daemon
 .claude-plugin/ skills/ bin/   Claude Code plugin (registers the MCP server) + resolver shim
-Distribution/                 release.sh (sign/notarize/DMG/R2) + Homebrew formula
+Distribution/                 release.sh (sign/notarize/DMG/GitHub Releases) + Homebrew formula
 project.yml             xcodegen source of truth (.xcodeproj is generated)
 ```
 
@@ -112,5 +112,5 @@ project.yml             xcodegen source of truth (.xcodeproj is generated)
 - Changing capture output, the prompt codec, or the store layout → update the pinned tests and the
   user-facing docs (`README.md`, `SKILL.md`, `MCP_SETUP.md`) in the same change.
 - Changing release channels or install paths → keep `Distribution/Scripts/release.sh`,
-  `scripts/build-app.sh`, `project.yml`, `docs/cloudflare-release-setup.md`, the Homebrew formula,
+  `scripts/build-app.sh`, `project.yml`, `docs/update-feed.md`, the Homebrew formula,
   and README install text aligned.

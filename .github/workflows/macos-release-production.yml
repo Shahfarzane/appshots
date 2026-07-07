@@ -21,11 +21,7 @@ jobs:
       KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
       DEVELOPER_ID_KEYCHAIN_GZIP_BASE64: ${{ secrets.DEVELOPER_ID_KEYCHAIN_GZIP_BASE64 }}
       SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-      CLOUDFLARE_R2_ACCOUNT_ID: ${{ vars.CLOUDFLARE_R2_ACCOUNT_ID }}
-      CLOUDFLARE_R2_BUCKET: ${{ vars.CLOUDFLARE_R2_BUCKET }}
-      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ vars.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
-      CLOUDFLARE_R2_PUBLIC_BASE_URL: ${{ vars.CLOUDFLARE_R2_PUBLIC_BASE_URL }}
+      GH_TOKEN: ${{ github.token }}
       NSUnbufferedIO: "YES"
     steps:
       - name: Checkout
@@ -71,7 +67,7 @@ jobs:
             artifacts/appshotsctl-*-arm64.zip
           generate_release_notes: true
 
-      - name: Publish Sparkle appcast and DMG to R2
+      - name: Publish Sparkle appcast and immutable DMG to the release
         run: Distribution/Scripts/release.sh upload
 
       - name: Upload release debug artifacts on failure

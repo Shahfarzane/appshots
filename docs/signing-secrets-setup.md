@@ -14,7 +14,6 @@ Required secrets:
 | `DEVELOPER_ID_KEYCHAIN_GZIP_BASE64` | A self-contained keychain (gzip + base64) holding the Developer ID Application identity and a stored `notarytool` credentials profile |
 | `KEYCHAIN_PASSWORD` | The password of that keychain |
 | `SPARKLE_PRIVATE_KEY` | The Sparkle EdDSA private key used to sign the appcast |
-| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 upload credential (see [cloudflare-release-setup.md](cloudflare-release-setup.md), which also lists the non-secret `CLOUDFLARE_R2_*` variables) |
 
 ## Sparkle EdDSA key
 
@@ -75,8 +74,7 @@ rm -f DeveloperID.p12
 
 ```sh
 gh secret list --repo <owner>/<repo>
-# expect: KEYCHAIN_PASSWORD, DEVELOPER_ID_KEYCHAIN_GZIP_BASE64, SPARKLE_PRIVATE_KEY,
-#         CLOUDFLARE_R2_SECRET_ACCESS_KEY
+# expect: KEYCHAIN_PASSWORD, DEVELOPER_ID_KEYCHAIN_GZIP_BASE64, SPARKLE_PRIVATE_KEY
 ```
 
 Then push a `v*` tag to run the release pipeline end to end.
