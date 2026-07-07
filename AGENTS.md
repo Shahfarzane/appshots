@@ -29,7 +29,7 @@ One shared library, two executables (`Package.swift` / `project.yml`):
   Owns `capture`, `latest`, `list`, `search`, `delete`, `doctor`, `benchmark`, `completion`,
   `config`, `trigger`, `sound`, `update`, `startup`, `onboarding`, `mcp`, and `daemon`. Its embedded
   `Info.plist` (`Resources/CLI/Info.plist`) gives the bare binary a stable TCC identity
-  (`ceo.nerd.appshots.cli`). The Homebrew formula in `DevKit/Homebrew/` is a distribution artifact;
+  (`ceo.nerd.appshots.cli`). The Homebrew formula in `Distribution/Homebrew/` is a distribution artifact;
   keep its URL, sha256, and macOS requirement in sync with real published releases.
 
 ## Build, test, run
@@ -49,7 +49,7 @@ xcodegen                          # regenerate the .xcodeproj
 CI is local: run `swift build` + `swift test` on the machine, then record it with `gh signoff`
 (required check on `main`); `ci.yml` is manual-only (`workflow_dispatch`). `v*` tags
 build/sign/notarize a release on `macos-26`. The release workflow regenerates the Xcode project, then
-`DevKit/Scripts/release.sh build` signs/notarizes/staples the DMG and signs/notarizes the standalone
+`Distribution/Scripts/release.sh build` signs/notarizes/staples the DMG and signs/notarizes the standalone
 CLI zip; `release.sh upload` publishes Sparkle/R2 artifacts. Run `swift test` before pushing.
 
 ## Gotchas (the ones that bite)
@@ -99,7 +99,7 @@ Sources/AppshotsCore/   library, by responsibility:
 Sources/Appshots/       menu-bar app (SwiftUI/AppKit + Luminare); Theme/Theme.swift; Vendor/PermissionFlow (vendored)
 Sources/AppshotsCLI/    appshotsctl CLI + MCP stdio server + daemon
 .claude-plugin/ skills/ bin/   Claude Code plugin (registers the MCP server) + resolver shim
-DevKit/                 release.sh (sign/notarize/DMG/R2) + Homebrew formula
+Distribution/                 release.sh (sign/notarize/DMG/R2) + Homebrew formula
 project.yml             xcodegen source of truth (.xcodeproj is generated)
 ```
 
@@ -111,6 +111,6 @@ project.yml             xcodegen source of truth (.xcodeproj is generated)
 - **No** Claude Code / Anthropic attribution in commits, PRs, or any artifact.
 - Changing capture output, the prompt codec, or the store layout → update the pinned tests and the
   user-facing docs (`README.md`, `SKILL.md`, `MCP_SETUP.md`) in the same change.
-- Changing release channels or install paths → keep `DevKit/Scripts/release.sh`,
+- Changing release channels or install paths → keep `Distribution/Scripts/release.sh`,
   `scripts/build-app.sh`, `project.yml`, `docs/cloudflare-release-setup.md`, the Homebrew formula,
   and README install text aligned.

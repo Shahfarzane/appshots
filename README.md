@@ -19,9 +19,9 @@ swift build
 scripts/build-app.sh debug   # assembles .build/Appshots.app with the helper embedded
 ```
 
-Releases come from `.github/workflows/macos-release-production.yml` and `DevKit/Scripts/release.sh`: a signed, notarized, stapled `Appshots.dmg` plus a signed/notarized standalone `appshotsctl-<version>-arm64.zip` for GUI-less / headless / agent setups. The app bundles the same helper at `Appshots.app/Contents/Helpers/appshotsctl` and auto-updates via Sparkle once an appcast is published.
+Releases come from `.github/workflows/macos-release-production.yml` and `Distribution/Scripts/release.sh`: a signed, notarized, stapled `Appshots.dmg` plus a signed/notarized standalone `appshotsctl-<version>-arm64.zip` for GUI-less / headless / agent setups. The app bundles the same helper at `Appshots.app/Contents/Helpers/appshotsctl` and auto-updates via Sparkle once an appcast is published.
 
-The standalone CLI ships with its own stable TCC identity (`CFBundleIdentifier = ceo.nerd.appshots.cli`), so its Accessibility / Screen Recording grants persist across upgrades. The Homebrew formula lives at `DevKit/Homebrew/appshotsctl.rb`; it is only installable after the release zip URL and sha256 point at a published artifact. See [Headless CLI usage](docs/headless-cli.md) for granting per-binary permissions.
+The standalone CLI ships with its own stable TCC identity (`CFBundleIdentifier = ceo.nerd.appshots.cli`), so its Accessibility / Screen Recording grants persist across upgrades. The Homebrew formula lives at `Distribution/Homebrew/appshotsctl.rb`; it is only installable after the release zip URL and sha256 point at a published artifact. See [Headless CLI usage](docs/headless-cli.md) for granting per-binary permissions.
 
 > The standalone CLI and the app are **separate** macOS TCC subjects. Each binary that captures (the app, the standalone CLI, the LaunchAgent daemon) needs its own Accessibility + Screen Recording grant in **System Settings > Privacy & Security**.
 
@@ -221,7 +221,7 @@ scripts/build-app.sh [release]    # assemble a runnable Appshots.app under .buil
 .build/debug/appshotsctl latest   # run the CLI
 ```
 
-CI is intentionally local-first: run `swift build` + `swift test` on your machine, then record the green run on the pushed commit with [`gh signoff`](https://github.com/basecamp/gh-signoff) (the required check on `main`). GitHub Actions is reserved for releases: pushing a `v*` tag runs the sign / notarize / DMG / Sparkle pipeline in `.github/workflows/macos-release-production.yml`, driven by `DevKit/Scripts/release.sh`.
+CI is intentionally local-first: run `swift build` + `swift test` on your machine, then record the green run on the pushed commit with [`gh signoff`](https://github.com/basecamp/gh-signoff) (the required check on `main`). GitHub Actions is reserved for releases: pushing a `v*` tag runs the sign / notarize / DMG / Sparkle pipeline in `.github/workflows/macos-release-production.yml`, driven by `Distribution/Scripts/release.sh`.
 
 See [AGENTS.md](AGENTS.md) for architecture notes and the conventions AI coding agents follow in this repo.
 

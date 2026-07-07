@@ -108,7 +108,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: ceo.nerd.appshots
         PRODUCT_NAME: Appshots
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        SPARKLE_FEED_URL: https://persist.nerd.ceo/appshots/appcast.xml
+        SPARKLE_FEED_URL: https://updates.nerd.ceo/appshots/appcast.xml
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: Apple Development
         DEVELOPMENT_TEAM: 89S32876QM
