@@ -62,3 +62,9 @@ Available tools:
 - `search_appshots`
 - `delete_appshot`
 - `doctor_appshots`
+
+Available prompts (user-invocable slash commands that attach the appshot,
+text + image, directly to the message):
+
+- `latest-appshot`
+- `appshot` (optional `app` argument: name or bundle id of a running app)

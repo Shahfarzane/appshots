@@ -199,6 +199,11 @@ Tools:
 - `delete_appshot`
 - `doctor_appshots`
 
-Use `format: "codex"` with `take_appshot` or `get_latest_appshot` to return the same model-facing shape Codex expects: one text item with the `<appshot>` block plus one image item with the screenshot. Other supported MCP formats are `prompt`, `model_prompt`, `json`, `payload`, `context`, `events`, `image_path`, and `directory`. Use `format: "context"` for the first-class `AppshotContext` object, including app icon and transition snapshot data when available, or `format: "events"` for the capture status log. For local streaming integrations, `capture --event-stream` writes newline-delimited event JSON as capture phases are emitted.
+Prompts (user-invocable — they surface as slash commands / attach-menu entries in MCP clients and land the appshot *in your message*, no tool call needed):
+
+- `latest-appshot` — attach the most recent capture (press the hot key, then invoke this)
+- `appshot` — capture now and attach; pass `app` (name or bundle id) to target a specific running app
+
+`take_appshot` and `get_latest_appshot` default to `format: "codex"`, the model-facing shape Codex expects: one text item with the `<appshot>` block plus one image item with the screenshot. Other supported MCP formats are `prompt`, `model_prompt`, `json`, `payload`, `context`, `events`, `image_path`, and `directory`. Use `format: "context"` for the first-class `AppshotContext` object, including app icon and transition snapshot data when available, or `format: "events"` for the capture status log. For local streaming integrations, `capture --event-stream` writes newline-delimited event JSON as capture phases are emitted.
 
 See [`MCP_SETUP.md`](MCP_SETUP.md) for Claude Desktop, Cursor, and CLI-agent examples.
