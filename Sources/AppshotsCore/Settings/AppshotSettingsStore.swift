@@ -64,6 +64,24 @@ public final class AppshotSettingsStore: @unchecked Sendable {
         }
     }
 
+    /// Writes `settings` only when no `config.json` exists yet, keeping the
+    /// existence check and the write inside one cross-process critical section
+    /// so a concurrent `save`/`mutate` from another process (e.g. a CLI
+    /// `config set` racing first GUI launch) can never be overwritten by the
+    /// seed. Returns whether the seed was written.
+    @discardableResult
+    public func seedIfAbsent(_ settings: AppshotSettings) throws -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return try withFileLock {
+            guard FileManager.default.fileExists(atPath: configURL.path) == false else {
+                return false
+            }
+            try saveLocked(settings)
+            return true
+        }
+    }
+
     /// Loads, mutates, and saves the settings under a single lock (intra-process
     /// `NSLock` + cross-process `flock`) so concurrent callers — including a
     /// separate GUI / CLI process — cannot lose each other's writes.
