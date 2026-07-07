@@ -195,8 +195,12 @@ public struct LaunchAgentController: Sendable {
         process.standardError = errorPipe
 
         try process.run()
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        // Drain both pipes concurrently so a chatty child can't deadlock the
+        // sequential read-stdout-then-stderr pattern.
+        let outputDrain = PipeDrain(outputPipe.fileHandleForReading)
+        let errorDrain = PipeDrain(errorPipe.fileHandleForReading)
+        let outputData = outputDrain.waitForData()
+        let errorData = errorDrain.waitForData()
         process.waitUntilExit()
 
         return LaunchctlResult(
