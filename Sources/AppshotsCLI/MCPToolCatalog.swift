@@ -26,14 +26,14 @@ enum MCPToolCatalog {
         ],
         [
             "name": "get_latest_appshot",
-            "description": "Return the latest appshot prompt or metadata.",
+            "description": "Return the latest appshot as Codex-style appshot text plus the screenshot image (or another format via `format`).",
             "inputSchema": [
                 "type": "object",
                 "properties": [
                     "format": [
                         "type": "string",
                         "enum": formatEnum,
-                        "default": "prompt",
+                        "default": "codex",
                     ],
                 ],
             ],
@@ -78,6 +78,31 @@ enum MCPToolCatalog {
             "name": "doctor_appshots",
             "description": "Check Appshots storage and latest capture health.",
             "inputSchema": ["type": "object", "properties": [String: Any]()],
+        ],
+        ]
+    }
+
+    /// The static MCP prompt catalog returned by the `prompts/list` handler.
+    /// Prompts surface as user-invocable slash commands / attach-menu entries in
+    /// MCP clients (Claude Code, Claude Desktop), so the appshot lands *in the
+    /// user's message* instead of requiring the agent to decide on a tool call.
+    /// Names, descriptions, and argument shapes are wire contract.
+    static var prompts: [[String: Any]] {
+        [
+        [
+            "name": "latest-appshot",
+            "description": "Attach the most recent appshot (screenshot + accessibility tree) captured with the hot key or `appshotsctl capture`.",
+        ],
+        [
+            "name": "appshot",
+            "description": "Capture an app right now and attach the appshot (screenshot + accessibility tree). Pass `app` to capture a specific running app by name or bundle id; without it the frontmost app is captured, which from a chat client is usually the chat window itself, so prefer naming the app or use latest-appshot after pressing the hot key.",
+            "arguments": [
+                [
+                    "name": "app",
+                    "description": "Bundle id or name of a running app to capture (e.g. Safari or com.apple.Safari).",
+                    "required": false,
+                ],
+            ],
         ],
         ]
     }
