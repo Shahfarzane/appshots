@@ -16,7 +16,7 @@
 class Appshotsctl < Formula
   desc "Standalone CLI + MCP server that sends macOS app context to coding agents"
   homepage "https://github.com/Shahfarzane/appshots"
-  version "0.1.3"
+  version "0.2.0"
   url "https://persist.nerd.ceo/appshots/appshotsctl-#{version}-arm64.zip"
   # PLACEHOLDER sha256 — replace with the digest of the published notarized zip.
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"

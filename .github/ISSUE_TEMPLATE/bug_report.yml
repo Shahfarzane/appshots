@@ -37,7 +37,7 @@ body:
     id: macos
     attributes:
       label: macOS Version
-      placeholder: "14.6, 15.0, ..."
+      placeholder: "15.5, 26.0, ..."
     validations:
       required: true
   - type: input

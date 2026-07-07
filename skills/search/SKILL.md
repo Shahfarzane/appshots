@@ -32,13 +32,13 @@ Invokes the `search_appshots` MCP tool, which searches the indexed appshot histo
 
 ## Output
 
-Returns a JSON array of matching captures, each with:
+Returns a JSON array of serialized capture records; the key fields:
 - `id`: unique capture identifier
-- `app`: application name and bundle identifier
-- `title`: window title
-- `url`: page URL if a browser was captured
-- `timestamp`: capture time
-- `path`: directory path to access the full capture
+- `appName` / `bundleID`: the captured application
+- `windowTitle`: window title
+- `pageURL`: page URL if a browser was captured
+- `createdAt`: capture time (ISO 8601)
+- `directoryPath`: directory path to access the full capture
 
 ## Related
 

@@ -4,8 +4,10 @@
 
 ## Verification
 
-- [ ] `swift build --product Appshots`
-- [ ] `xcodebuild -project Appshots.xcodeproj -scheme Appshots -configuration Debug build`
+- [ ] `swift build`
+- [ ] `swift test`
+- [ ] For app/UI changes: `scripts/build-app.sh` and exercised the affected flow
+      (regenerate the Xcode project with `xcodegen` first if you changed `project.yml`)
 
 ## Screenshots
 

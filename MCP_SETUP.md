@@ -50,9 +50,9 @@ registration in the same scope first.
 
 ## Enable from the app
 
-Open the Appshots menu-bar popover → the gear menu → **Enable MCP…**, pick
-**User** (global) or **Project** scope, and Appshots registers the server with
-Claude Code for you and shows live status.
+Open Appshots Settings (right-click the menu-bar icon → **Settings…**) → the
+**MCP** tab, pick **User** (global) or **Project** scope, and Appshots
+registers the server with Claude Code for you and shows live status.
 
 ## Manual (Claude Code CLI)
 

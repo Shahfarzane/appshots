@@ -42,7 +42,7 @@ appshotsctl doctor
 If `appshotsctl` is not installed globally, use the repo build output:
 
 ```sh
-/Users/shahin/Code/Github/appshots/.build/debug/appshotsctl latest
+.build/debug/appshotsctl latest
 ```
 
 ## MCP
@@ -50,7 +50,7 @@ If `appshotsctl` is not installed globally, use the repo build output:
 Register the native MCP server (built into `appshotsctl`) with Claude Code:
 
 ```sh
-claude mcp add appshots -s user -- /Users/shahin/Code/Github/appshots/.build/debug/appshotsctl mcp
+claude mcp add appshots -s user -- "$(pwd)/.build/debug/appshotsctl" mcp
 ```
 
 Available tools:

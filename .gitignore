@@ -20,7 +20,11 @@ xcodebuild.log
 # --- Editors ---
 .vscode/
 
+# --- Agent tooling (local Claude Code state; the shipped plugin lives in .claude-plugin/ + skills/) ---
+.claude/
+
 # --- Build & distribution artifacts ---
+Build/
 *.app/
 *.dSYM/
 *.dSYM.zip

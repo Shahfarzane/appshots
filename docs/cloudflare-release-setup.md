@@ -1,7 +1,17 @@
-# Cloudflare setup for Appshots releases (`persist.nerd.ceo`)
+# Cloudflare setup for Appshots releases
 
-What the release pipeline (`DevKit/Scripts/release.sh` + `.github/workflows/macos-release-production.yml`)
-expects from Cloudflare. Hand this to whoever provisions the account.
+Maintainer infrastructure notes: what the release pipeline
+(`DevKit/Scripts/release.sh` + `.github/workflows/macos-release-production.yml`)
+expects from Cloudflare. `persist.nerd.ceo` is this project's feed host;
+substitute your own domain on a fork.
+
+> **Known caveat:** on this account the custom-domain TLS certificate for the
+> feed host initially failed to bind at the Cloudflare edge, and the feed was
+> temporarily served from the bucket's public `pub-*.r2.dev` URL instead.
+> Before the next release, verify the custom domain actually serves
+> (`curl -I https://persist.nerd.ceo/appshots/appcast.xml`); if it does not,
+> set the `CLOUDFLARE_R2_PUBLIC_BASE_URL` repo variable to the `pub-*.r2.dev`
+> base URL, which the pipeline honors everywhere.
 
 ## Goal
 
