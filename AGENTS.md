@@ -46,8 +46,9 @@ scripts/build-app.sh [release]    # assemble a runnable Appshots.app under .buil
 xcodegen                          # regenerate the .xcodeproj
 ```
 
-CI runs `swift build` + `swift test` on PRs/pushes to `main`; `v*` tags build/sign/notarize a
-release on `macos-26`. The release workflow regenerates the Xcode project, then
+CI is local: run `swift build` + `swift test` on the machine, then record it with `gh signoff`
+(required check on `main`); `ci.yml` is manual-only (`workflow_dispatch`). `v*` tags
+build/sign/notarize a release on `macos-26`. The release workflow regenerates the Xcode project, then
 `DevKit/Scripts/release.sh build` signs/notarizes/staples the DMG and signs/notarizes the standalone
 CLI zip; `release.sh upload` publishes Sparkle/R2 artifacts. Run `swift test` before pushing.
 

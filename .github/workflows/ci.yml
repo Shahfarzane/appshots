@@ -1,9 +1,9 @@
 name: CI
 
+# PR gating moved to local CI (gh signoff, required check on main).
+# Keep this runnable on demand for a clean-machine sanity build.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
