@@ -40,7 +40,7 @@ enum AppshotsTheme {
     enum Size {
         static let sidebarWidth: CGFloat = 230
         static let paneWidth: CGFloat = 390
-        static let settingsHeight: CGFloat = 620
+        static let settingsHeight: CGFloat = 420
         static let popover = CGSize(width: 400, height: 620)
         static let tabIcon: CGFloat = 22
         static let statusDot: CGFloat = 10

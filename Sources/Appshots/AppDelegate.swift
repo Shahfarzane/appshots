@@ -191,10 +191,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let isRightClick = event?.type == .rightMouseUp
             || (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true)
 
+        // Left click opens the menu (primary actions); right click opens the
+        // history popover.
         if isRightClick {
-            showStatusMenu()
-        } else {
             togglePopover(sender)
+        } else {
+            showStatusMenu()
         }
     }
 
