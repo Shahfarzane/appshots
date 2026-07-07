@@ -289,13 +289,25 @@ public final class ClaudeMCPRegistrar: Sendable {
         }
 
         let output = result.standardOutput
-        let lowered = output.lowercased()
-        if lowered.contains("project") {
-            let path = projectPath(from: output) ?? projectDirectory?.path ?? ""
-            return .enabledProject(path: path)
-        }
-        if lowered.contains("user") {
-            return .enabledUser
+        // Parse the `Scope:` line specifically. Substring-matching the whole
+        // output misclassifies: a user-scoped server prints "Scope: User config
+        // (available in all your projects)", whose "projects" would match a
+        // naive project check, and a helper path can contain either word.
+        let scopeValue = output
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .first { $0.lowercased().hasPrefix("scope:") }
+            .map { $0.dropFirst("scope:".count).trimmingCharacters(in: .whitespaces).lowercased() }
+        if let scopeValue {
+            if scopeValue.hasPrefix("user") {
+                return .enabledUser
+            }
+            // "Local" registrations are project-specific too; report them with
+            // the project path like project scope.
+            if scopeValue.hasPrefix("project") || scopeValue.hasPrefix("local") {
+                let path = projectPath(from: output) ?? projectDirectory?.path ?? ""
+                return .enabledProject(path: path)
+            }
         }
         // Registered but scope unrecognised — treat as user-level.
         return .enabledUser
@@ -347,8 +359,13 @@ public final class ClaudeMCPRegistrar: Sendable {
             return nil
         }
 
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        // Drain both pipes concurrently: `claude` can emit >64KB of stderr
+        // (Node warnings, stack traces) and would deadlock a sequential
+        // read-stdout-then-stderr parent.
+        let outputDrain = PipeDrain(outputPipe.fileHandleForReading)
+        let errorDrain = PipeDrain(errorPipe.fileHandleForReading)
+        let outputData = outputDrain.waitForData()
+        let errorData = errorDrain.waitForData()
         process.waitUntilExit()
 
         return ProcessResult(

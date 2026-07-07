@@ -35,11 +35,41 @@ public enum AppshotOutputError: LocalizedError {
 /// pretty config; `lineEncoder` matches the CLI `printJSONLine` config used by
 /// the newline-delimited capture event stream.
 public enum AppshotJSON {
+    private static let fractionalSecondsStyle = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+    private static let wholeSecondsStyle = Date.ISO8601FormatStyle()
+
+    /// ISO-8601 with fractional (millisecond) seconds. Whole-second encoding
+    /// floor-truncated `createdAt`/`startedAt` by up to a second, so records
+    /// didn't round-trip equal and `appendMetricPhase` offsets were skewed by
+    /// up to ~1000ms against the recorder's own phase offsets in the same file.
+    public static var dateEncodingStrategy: JSONEncoder.DateEncodingStrategy {
+        .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(fractionalSecondsStyle.format(date))
+        }
+    }
+
+    /// Accepts both fractional and whole-second ISO-8601, so files written by
+    /// older builds (and by hand) keep decoding.
+    public static var dateDecodingStrategy: JSONDecoder.DateDecodingStrategy {
+        .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let string = try container.decode(String.self)
+            if let date = (try? fractionalSecondsStyle.parse(string)) ?? (try? wholeSecondsStyle.parse(string)) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unrecognized ISO-8601 date: \(string)"
+            )
+        }
+    }
+
     /// Pretty, deterministic JSON: `[.prettyPrinted, .sortedKeys]` + ISO-8601 dates.
     public static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = dateEncodingStrategy
         return encoder
     }
 
@@ -47,8 +77,15 @@ public enum AppshotJSON {
     public static var lineEncoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = dateEncodingStrategy
         return encoder
+    }
+
+    /// The matching decoder (tolerant ISO-8601 dates).
+    public static var decoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = dateDecodingStrategy
+        return decoder
     }
 
     /// Encodes `value` with the pretty `encoder` and returns it as a UTF-8 string.

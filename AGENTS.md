@@ -67,7 +67,8 @@ CLI zip; `release.sh upload` publishes Sparkle/R2 artifacts. Run `swift test` be
 - **Wire contracts are external API.** The `<appshot>` prompt strings, MCP tool/format output
   (`AppshotMCPServer`, `MCPToolCatalog`, `AppshotPromptCodec`, `AppshotContext`), and the
   `~/.appshots/` store layout (`snapshots/<date>/<id>/…` plus `latest.{md,txt,json}` +
-  `index.json`, updated on every save) are consumed by external agents. Existing
+  `index.json`, updated on every save; save/delete/clear hold `~/.appshots/index.lock` so
+  concurrent GUI/CLI/daemon writers can't lose updates) are consumed by external agents. Existing
   `AppshotStoreTests` / `AppshotSettingsTests` pin the store/settings pieces; add or update focused
   MCP tests when changing the MCP catalog/server contract.
 - **Per-binary TCC.** The app, the standalone CLI, and the daemon are separate macOS TCC subjects —

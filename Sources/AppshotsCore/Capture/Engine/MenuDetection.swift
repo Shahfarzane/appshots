@@ -20,11 +20,11 @@ extension AccessibilityCaptureEngine {
         matching targetFrame: CGRect? = nil
     ) -> PopupMenuCandidate? {
         var stack = roots
-        var visited = Set<CFHashCode>()
+        var visited = Set<AXElementKey>()
         var best: PopupMenuCandidate?
 
         while let element = stack.popLast() {
-            let identifier = CFHash(element)
+            let identifier = AXElementKey(element: element)
             if visited.contains(identifier) {
                 continue
             }
@@ -117,11 +117,11 @@ extension AccessibilityCaptureEngine {
 
     private static func collectStatusMenuExtras(in appElement: AXUIElement) -> [AXUIElement] {
         var stack: [(AXUIElement, Int)] = [(appElement, 0)]
-        var visited = Set<CFHashCode>()
+        var visited = Set<AXElementKey>()
         var result: [AXUIElement] = []
 
         while let (element, depth) = stack.popLast() {
-            let identifier = CFHash(element)
+            let identifier = AXElementKey(element: element)
             if visited.contains(identifier) {
                 continue
             }
@@ -153,10 +153,10 @@ extension AccessibilityCaptureEngine {
 
     private static func isTransientPopupMenu(_ menu: AXUIElement) -> Bool {
         var current: AXUIElement? = menu
-        var visited = Set<CFHashCode>()
+        var visited = Set<AXElementKey>()
 
         while let element = current {
-            let identifier = CFHash(element)
+            let identifier = AXElementKey(element: element)
             if visited.contains(identifier) {
                 return false
             }

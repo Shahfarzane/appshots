@@ -29,6 +29,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         super.init()
     }
 
+    /// Whether the settings window is currently on screen.
+    var isWindowVisible: Bool {
+        controller?.window?.isVisible ?? false
+    }
+
     func show(selecting tab: SettingsTab? = nil) {
         if let tab {
             model.currentTab = tab

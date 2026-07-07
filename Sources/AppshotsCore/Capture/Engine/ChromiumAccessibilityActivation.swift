@@ -3,8 +3,13 @@ import Foundation
 
 private let chromiumAXObserverNoopCallback: AXObserverCallbackWithInfo = { _, _, _, _, _ in }
 
+/// `@unchecked Sendable`: `activatedPIDs`/`observers` are guarded by `lock`;
+/// captures can enter from the GUI's detached tasks, the CLI thread, or the
+/// daemon concurrently.
 final class ChromiumAccessibilityActivation: @unchecked Sendable {
     static let shared = ChromiumAccessibilityActivation()
+
+    private let lock = NSLock()
 
     private typealias AddNotificationAndCheckRemoteFn = @convention(c) (
         AXObserver,
@@ -42,7 +47,7 @@ final class ChromiumAccessibilityActivation: @unchecked Sendable {
             return
         }
 
-        guard activatedPIDs.insert(pid).inserted else {
+        guard lock.withLock({ activatedPIDs.insert(pid).inserted }) else {
             return
         }
 
@@ -78,7 +83,9 @@ final class ChromiumAccessibilityActivation: @unchecked Sendable {
             _ = addNotification(observer: observer, element: root, notification: notification)
         }
 
-        observers[pid] = observer
+        lock.withLock {
+            observers[pid] = observer
+        }
     }
 
     private func addNotification(

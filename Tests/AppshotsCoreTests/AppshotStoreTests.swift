@@ -55,6 +55,30 @@ struct AppshotStoreTests {
         #expect(store.searchCaptures(query: "example.com").first?.id == record.id)
     }
 
+    @Test func `Record dates round-trip with sub-second precision and legacy whole-second files decode`() throws {
+        let rootURL = temporaryRootURL()
+        defer { try? FileManager.default.removeItem(at: rootURL) }
+
+        let store = AppshotStore(rootURL: rootURL)
+        var snapshotMetadata = metadata()
+        snapshotMetadata.createdAt = Date(timeIntervalSince1970: 1.789)
+        let record = try store.save(
+            target: FrontmostAppTarget(name: "Safari", bundleID: "com.apple.Safari", pid: 42),
+            output: CaptureOutput(text: "Window: Dates", metadata: snapshotMetadata)
+        )
+
+        let reloaded = try #require(store.latestCapture())
+        #expect(abs(reloaded.createdAt.timeIntervalSince(record.createdAt)) < 0.001)
+
+        // Index files written by older builds carry whole-second dates; the
+        // tolerant decoder must keep reading them.
+        let legacyJSON = try String(contentsOf: store.indexURL, encoding: .utf8)
+            .replacingOccurrences(of: "1970-01-01T00:00:01.789Z", with: "1970-01-01T00:00:01Z")
+        try legacyJSON.write(to: store.indexURL, atomically: true, encoding: .utf8)
+        let legacy = try #require(store.latestCapture())
+        #expect(legacy.createdAt == Date(timeIntervalSince1970: 1))
+    }
+
     @Test func `Save persists metrics when recorder is supplied`() throws {
         let rootURL = temporaryRootURL()
         defer { try? FileManager.default.removeItem(at: rootURL) }
@@ -184,6 +208,17 @@ struct AppshotStoreTests {
         )
         #expect(paired.nonAppshotImageSources == ["regular.png"])
         #expect(paired.appshotContexts.first?.imageDataURL == "data:image/png;base64,abc")
+
+        // Trailing comment images stay out of the pairable pool even when the
+        // appshot images run short: with one appshot and only comment images
+        // remaining, nothing must be paired.
+        let commentOnly = AppshotPromptCodec.pairAppshots(
+            in: prompt,
+            imageSources: ["shot.png", "comment1.png", "comment2.png"],
+            commentImageCount: 2
+        )
+        #expect(commentOnly.appshotContexts.first?.imagePath == "shot.png")
+        #expect(commentOnly.nonAppshotImageSources == ["comment1.png", "comment2.png"])
     }
 
     @Test func `Payload can inline screenshot data URL`() throws {
@@ -260,7 +295,9 @@ struct AppshotStoreTests {
         )
 
         #expect(line.contains("URL: example.com/path"))
-        #expect(line.contains("[truncated 10 chars]"))
+        // 10 chars over the limit + the 24-char suffix allowance trimmed from
+        // the kept prefix: the label reports every char actually omitted.
+        #expect(line.contains("[truncated 34 chars]"))
     }
 
     @Test func `Appshot compression preserves Mail sized stored screenshots`() {

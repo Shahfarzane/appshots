@@ -92,7 +92,7 @@ extension JSONEncoder {
     static var snapshotCache: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        encoder.dateEncodingStrategy = AppshotJSON.dateEncodingStrategy
         return encoder
     }
 }

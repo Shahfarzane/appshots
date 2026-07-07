@@ -82,6 +82,9 @@ final class AppshotsModel {
     }
 
     @ObservationIgnored weak var frontmostTracker: FrontmostAppTracker?
+    /// Whether the settings window is currently on screen; wired by the app
+    /// delegate so Dock-visibility changes don't deactivate an open window.
+    @ObservationIgnored var isSettingsWindowVisible: (() -> Bool)?
     @ObservationIgnored var playCaptureAnimation: ((AppshotRecord, NSImage?) -> Void)?
     @ObservationIgnored var playPendingCaptureAnimation: ((CGRect, NSImage, String, String) -> Void)?
     @ObservationIgnored var showPermissionPanel: (() -> Void)?
@@ -136,7 +139,15 @@ final class AppshotsModel {
     /// Applies the current Dock-visibility preference by switching the app's
     /// activation policy. `.regular` shows a Dock icon; `.accessory` is
     /// menu-bar-only. Safe to call repeatedly.
+    ///
+    /// While the settings window is open the app must stay `.regular` (its
+    /// controller's invariant; dropping to `.accessory` deactivates the very
+    /// window the user is interacting with) — the controller re-applies the
+    /// preference in `windowWillClose`.
     func applyDockVisibility() {
+        if showInDock == false, isSettingsWindowVisible?() == true {
+            return
+        }
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
     }
 
@@ -447,6 +458,9 @@ final class AppshotsModel {
         case .failed:
             pendingCapture = nil
             pendingAnimationStarted = false
+            // Mirror .completed's cleanup, or every failed capture that got as
+            // far as its screenshot strands one entry in the set forever.
+            animatedPendingRequestIDs.remove(event.requestID)
             statusMessage = event.failureReason ?? "Capture failed"
         case .permissionsAbandoned:
             permissionRequestState = .permissionsAbandoned
@@ -511,6 +525,9 @@ final class AppshotsModel {
         recentCaptures.insert(record, at: 0)
 
         recentCaptures = Array(recentCaptures.prefix(maxRecentCaptures))
+        // An open History pane reloads on this; without it a capture taken
+        // while Settings is open never appears until the user switches tabs.
+        historyVersion += 1
     }
 
     func quit() {
