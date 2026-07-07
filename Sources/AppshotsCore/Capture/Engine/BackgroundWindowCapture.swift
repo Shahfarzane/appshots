@@ -10,22 +10,22 @@ public struct ScreenshotCompression: Codable, Equatable, Sendable {
     public static let foregroundDefault = ScreenshotCompression()
     public static let appshotStored = ScreenshotCompression(
         maxLongEdgePixels: 8192,
-        maxPixelArea: 67_108_864,
-        jpegQuality: 0.92
+        maxPixelArea: 67_108_864
     )
 
+    // No quality knob: every screenshot is encoded as PNG (`writePNG`), so a
+    // JPEG-quality field here was never read and only misled the diagnostics
+    // sidecar it was serialized into. Old sidecars with the field still decode
+    // (unknown keys are ignored).
     public var maxLongEdgePixels: Int
     public var maxPixelArea: Int
-    public var jpegQuality: Double
 
     public init(
         maxLongEdgePixels: Int = 1568,
-        maxPixelArea: Int = 629_145,
-        jpegQuality: Double = 0.82
+        maxPixelArea: Int = 629_145
     ) {
         self.maxLongEdgePixels = maxLongEdgePixels
         self.maxPixelArea = maxPixelArea
-        self.jpegQuality = jpegQuality
     }
 
     public func scaledPixelSize(width srcW: Int, height srcH: Int) -> CGSize {
