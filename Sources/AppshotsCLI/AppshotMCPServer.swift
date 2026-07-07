@@ -8,7 +8,7 @@ import Foundation
 /// a single compact JSON line followed by a newline. Notifications (requests
 /// without an `id`) never produce a response. The loop exits cleanly on EOF.
 final class AppshotMCPServer {
-    private static let serverVersion = "0.1.0"
+    private static let serverVersion = "0.2.0"
     private static let protocolVersion = "2024-11-05"
 
     private let store: AppshotStore

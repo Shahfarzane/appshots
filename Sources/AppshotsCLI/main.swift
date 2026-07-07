@@ -154,7 +154,7 @@ enum AppshotsCLI {
     /// The CLI version. Read from the embedded `Info.plist` section on a shipped
     /// binary; falls back to the marketing version for a bare `swift build`.
     private static var version: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.1.3"
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0.2.0"
     }
 
     private static func printRecordOutput(
