@@ -64,10 +64,12 @@ jobs:
           tag='${{ steps.build.outputs.tag }}'
           # GitHub's auto-generated "What's Changed", with the repo owner's own
           # @mention dropped (noise on a solo repo) while outside contributors
-          # keep their "by @name" credit.
+          # keep their "by @name" credit. Degrade to the preamble alone if the
+          # generate-notes API is unavailable (rate limit / dispatch with no tag
+          # ref yet) rather than failing the release — mirrors release.sh.
           changelog=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
-            -f tag_name="$tag" --jq .body \
-            | sed "s/ by @${{ github.repository_owner }} in / in /g")
+            -f tag_name="$tag" --jq .body 2>/dev/null \
+            | sed "s/ by @${{ github.repository_owner }} in / in /g" || true)
           {
             echo 'body<<__RELEASE_NOTES_EOF__'
             cat .github/RELEASE_NOTES.md
