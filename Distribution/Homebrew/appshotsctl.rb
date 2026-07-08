@@ -6,9 +6,8 @@
 # ceo.nerd.appshots.cli), so Accessibility / Screen Recording grants persist.
 #
 # The formula points at the notarized zip produced by Distribution/Scripts/release.sh
-# and attached to the version's GitHub Release. Until the first artifact is
-# published, the sha256 below is a CLEARLY-MARKED PLACEHOLDER — replace it with
-# the real digest of the published zip:
+# and attached to the version's GitHub Release. On each release, bump `version`
+# and refresh `sha256` with the digest of the published zip:
 #
 #   shasum -a 256 appshotsctl-<version>-arm64.zip
 #
@@ -18,8 +17,7 @@ class Appshotsctl < Formula
   homepage "https://github.com/Shahfarzane/appshots"
   version "0.2.0"
   url "https://github.com/Shahfarzane/appshots/releases/download/v#{version}/appshotsctl-#{version}-arm64.zip"
-  # PLACEHOLDER sha256 — replace with the digest of the published notarized zip.
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "a17c7529c3406f96748fabaccc6b6fe00e434a930fea3b35febfccb6979b3732"
   license "MIT"
 
   depends_on arch: :arm64
