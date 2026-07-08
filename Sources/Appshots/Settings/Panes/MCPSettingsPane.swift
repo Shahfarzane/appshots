@@ -48,19 +48,22 @@ struct MCPSettingsPane: View {
             LuminareSection("Scope") {
                 LuminareCompose {
                     // Two Luminare buttons (like Disable/Enable), sized to fit the
-                    // row; the active scope is shown highlighted.
+                    // row; the active scope gets a filled accent tint (not just a
+                    // hover highlight) so the selection is unmistakable at rest.
                     HStack(spacing: 8) {
                         ForEach(MCPScope.allCases, id: \.self) { scope in
                             Button {
                                 model.scope = scope
                             } label: {
                                 Text(scope.displayName)
+                                    .fontWeight(model.scope == scope ? .semibold : .regular)
                                     .frame(height: 32)
                                     .padding(.horizontal, 12)
                             }
-                            .buttonStyle(.luminare(overrideIsHovering: model.scope == scope))
+                            .buttonStyle(.luminare(tinted: model.scope == scope))
                             .luminareCornerRadius(8)
                             .fixedSize()
+                            .tint(.accentColor)
                             .disabled(model.isRunning)
                         }
                     }
