@@ -24,7 +24,7 @@ struct RecentCapturesSection: View {
                     }
                     .padding(.vertical, 1)
                 }
-                .frame(maxHeight: 320)
+                .frame(maxHeight: 420)
             } else {
                 Text("No appshots yet.")
                     .font(.appRowLabel)
