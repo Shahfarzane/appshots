@@ -57,15 +57,34 @@ jobs:
         timeout-minutes: 45
         run: Distribution/Scripts/release.sh build
 
+      - name: Compose release notes
+        id: notes
+        run: |
+          set -euo pipefail
+          tag='${{ steps.build.outputs.tag }}'
+          # GitHub's auto-generated "What's Changed", with the repo owner's own
+          # @mention dropped (noise on a solo repo) while outside contributors
+          # keep their "by @name" credit.
+          changelog=$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="$tag" --jq .body \
+            | sed "s/ by @${{ github.repository_owner }} in / in /g")
+          {
+            echo 'body<<__RELEASE_NOTES_EOF__'
+            cat .github/RELEASE_NOTES.md
+            echo
+            printf '%s\n' "$changelog"
+            echo '__RELEASE_NOTES_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create or update GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.build.outputs.tag }}
           name: Release ${{ steps.build.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
           files: |
             artifacts/Appshots.dmg
             artifacts/appshotsctl-*-arm64.zip
-          generate_release_notes: true
 
       - name: Publish Sparkle appcast and immutable DMG to the release
         run: Distribution/Scripts/release.sh upload

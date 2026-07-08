@@ -450,7 +450,17 @@ gh_release_ensure() {
   local tag="$1"
   gh release view "$tag" --repo "$GITHUB_REPO" > /dev/null 2>&1 && return 0
   log_step "creating GitHub release $tag"
-  gh release create "$tag" --repo "$GITHUB_REPO" --title "Release $tag" --generate-notes
+  # Preamble (.github/RELEASE_NOTES.md) + GitHub's auto changelog, with the repo
+  # owner's own @mention stripped so a solo maintainer isn't listed against every
+  # PR while outside contributors keep their "by @name" credit. Mirrors the CI
+  # "Compose release notes" step; falls back to the preamble if generate-notes fails.
+  local owner preamble changelog notes
+  owner="${GITHUB_REPO%%/*}"
+  preamble=$(cat "$PROJECT_ROOT/.github/RELEASE_NOTES.md" 2> /dev/null || true)
+  changelog=$(gh api "repos/$GITHUB_REPO/releases/generate-notes" -f tag_name="$tag" --jq .body 2> /dev/null \
+    | sed "s/ by @${owner} in / in /g" || true)
+  notes="${preamble}"$'\n\n'"${changelog}"
+  gh release create "$tag" --repo "$GITHUB_REPO" --title "Release $tag" --notes "$notes"
 }
 
 gh_release_put() {
