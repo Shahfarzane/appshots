@@ -36,8 +36,14 @@ artifacts/
 # --- Signing / secrets ---
 Distribution/Keychain/
 *.keychain
+*.keychain-db
 *.p12
+*.p8
+*.pem
+*.cer
 *.mobileprovision
+AuthKey_*.p8
+private-key.txt
 .env
 .env.*
 
