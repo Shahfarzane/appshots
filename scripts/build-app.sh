@@ -76,8 +76,10 @@ sign() { codesign --force --sign "$SIGN_IDENTITY" "$@"; }
 # services' own entitlements so auto-update keeps working.
 SPARKLE_BUNDLE="$FRAMEWORKS_DIR/Sparkle.framework"
 if [[ -d "$SPARKLE_BUNDLE" ]]; then
+    # Matches Distribution/Scripts/release.sh: only Downloader.xpc keeps its
+    # entitlements (network client); Installer.xpc is signed plainly.
     [[ -e "$SPARKLE_BUNDLE/Versions/B/XPCServices/Installer.xpc" ]] \
-        && sign --preserve-metadata=entitlements "$SPARKLE_BUNDLE/Versions/B/XPCServices/Installer.xpc"
+        && sign "$SPARKLE_BUNDLE/Versions/B/XPCServices/Installer.xpc"
     [[ -e "$SPARKLE_BUNDLE/Versions/B/XPCServices/Downloader.xpc" ]] \
         && sign --preserve-metadata=entitlements "$SPARKLE_BUNDLE/Versions/B/XPCServices/Downloader.xpc"
     [[ -e "$SPARKLE_BUNDLE/Versions/B/Autoupdate" ]] && sign "$SPARKLE_BUNDLE/Versions/B/Autoupdate"
