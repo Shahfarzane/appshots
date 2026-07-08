@@ -54,8 +54,41 @@ fi
 /usr/libexec/PlistBuddy -c "Set :SUFeedURL $SPARKLE_FEED_URL" "$CONTENTS_DIR/Info.plist"
 
 # install_name_tool + PlistBuddy invalidate any prior signature, so re-sign.
-# Ad-hoc here keeps the bundle launchable; release builds re-sign with a
-# Developer ID identity afterwards (which simply replaces this signature).
-codesign --force --deep --sign - "$APP_DIR" >/dev/null 2>&1 || true
+#
+# macOS keys TCC grants — Screen Recording especially — to the app's code
+# signature. An ad-hoc signature is not a stable, trusted identity, so the
+# grant is re-prompted on every launch and never persists across a quit +
+# reopen. Sign with the Developer ID Application identity when it is available
+# (TCC keys it on Team ID + bundle ID, so the grant survives restarts *and*
+# future rebuilds); fall back to ad-hoc only when no identity is present.
+SIGN_IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
+    | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
+if [[ -z "$SIGN_IDENTITY" ]]; then
+    SIGN_IDENTITY="-"
+    echo "warning: no Developer ID Application identity in the keychain — ad-hoc" \
+         "signing; the Screen Recording grant will NOT persist across restarts" >&2
+fi
+
+sign() { codesign --force --sign "$SIGN_IDENTITY" "$@"; }
+
+# Inside-out: nested code must be validly signed before the outer app seals
+# over it, or `codesign --verify --deep` fails. Preserve the Sparkle XPC
+# services' own entitlements so auto-update keeps working.
+SPARKLE_BUNDLE="$FRAMEWORKS_DIR/Sparkle.framework"
+if [[ -d "$SPARKLE_BUNDLE" ]]; then
+    # Matches Distribution/Scripts/release.sh: only Downloader.xpc keeps its
+    # entitlements (network client); Installer.xpc is signed plainly.
+    [[ -e "$SPARKLE_BUNDLE/Versions/B/XPCServices/Installer.xpc" ]] \
+        && sign "$SPARKLE_BUNDLE/Versions/B/XPCServices/Installer.xpc"
+    [[ -e "$SPARKLE_BUNDLE/Versions/B/XPCServices/Downloader.xpc" ]] \
+        && sign --preserve-metadata=entitlements "$SPARKLE_BUNDLE/Versions/B/XPCServices/Downloader.xpc"
+    [[ -e "$SPARKLE_BUNDLE/Versions/B/Autoupdate" ]] && sign "$SPARKLE_BUNDLE/Versions/B/Autoupdate"
+    [[ -e "$SPARKLE_BUNDLE/Versions/B/Updater.app" ]] && sign "$SPARKLE_BUNDLE/Versions/B/Updater.app"
+    sign "$SPARKLE_BUNDLE"
+fi
+sign "$HELPERS_DIR/appshotsctl"
+sign "$APP_DIR"
+codesign --verify --deep --strict "$APP_DIR" >/dev/null 2>&1 \
+    || echo "warning: code signature verification failed for $APP_DIR" >&2
 
 echo "$APP_DIR"
