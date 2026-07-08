@@ -474,9 +474,16 @@ upload_release() {
   # Detach the DMG mount + remove temp dirs even if a die fires partway through.
   _REL_MOUNT=""; _REL_TMP=""
   _release_cleanup() {
+    # Preserve the incoming exit code: the cleanup's own `[[ … ]] && rm` lines
+    # return non-zero when their guard is false, and under this EXIT trap the
+    # last command's status becomes the script's exit status — which made a
+    # fully-successful upload report failure. Capture the real code, guard every
+    # cleanup step, and re-return it.
+    local _rc=$?
     [[ -n "${_REL_MOUNT:-}" ]] && hdiutil detach "$_REL_MOUNT" -quiet 2> /dev/null || true
-    [[ -n "${_REL_MOUNT:-}" && -d "$_REL_MOUNT" ]] && rm -rf "$_REL_MOUNT"
-    [[ -n "${_REL_TMP:-}" && -d "$_REL_TMP" ]] && rm -rf "$_REL_TMP"
+    [[ -n "${_REL_MOUNT:-}" && -d "$_REL_MOUNT" ]] && rm -rf "$_REL_MOUNT" || true
+    [[ -n "${_REL_TMP:-}" && -d "$_REL_TMP" ]] && rm -rf "$_REL_TMP" || true
+    return $_rc
   }
   trap _release_cleanup EXIT
 
