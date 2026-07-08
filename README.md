@@ -8,11 +8,34 @@ Inspired by [OpenAI Codex appshots](https://developers.openai.com/codex/appshots
 
 Press left Option + right Option to capture the frontmost app, or use the menu bar popover.
 
+<p align="center">
+  <a href="docs/media/appshots-demo.mp4"><img src="docs/media/demo.gif" alt="Appshots demo: capture the frontmost window, then paste the screenshot and appshot prompt into a coding agent" width="840"></a>
+</p>
+
+<p align="center"><sub><a href="docs/media/appshots-demo.mp4">▶ Watch the full-quality demo</a></sub></p>
+
 The capture/control surface is also available headlessly from the `appshotsctl` CLI — capture, readback/search/delete, configuration, the trigger key, launch-at-login, MCP registration, shell completion, benchmarking, and a daemon that hosts the global hot key without any GUI. GUI-only surfaces such as the popover, preview/history UI, and interactive Sparkle update flow stay in `Appshots.app`. See [Headless CLI usage](docs/headless-cli.md).
+
+## Screenshots
+
+Every capture keeps both a screenshot and the app's accessibility tree. The preview window shows either view, and what an agent consumes is the Codex-style `<appshot>` prompt rendered from them.
+
+<p align="center">
+  <img src="docs/media/preview-screenshot.png" alt="Appshots preview showing the captured window screenshot" width="49%">
+  <img src="docs/media/preview-ax-tree.png" alt="The same capture viewed as its accessibility tree" width="49%">
+</p>
+
+Every capture is persisted, so you can browse, re-copy, or clear past captures from the History pane.
+
+<p align="center">
+  <img src="docs/media/history.png" alt="Appshots History pane with a grid of past capture thumbnails" width="72%">
+</p>
 
 ## Install
 
-No public release is published yet — build from source:
+Download the latest signed, notarized **[Appshots.dmg](https://github.com/Shahfarzane/appshots/releases/latest/download/Appshots.dmg)** (macOS 15+, Apple silicon), open it, and drag Appshots to Applications. CLI-only users can grab the standalone `appshotsctl-<version>-arm64.zip` from the [latest release](https://github.com/Shahfarzane/appshots/releases/latest).
+
+Or build from source:
 
 ```sh
 swift build
