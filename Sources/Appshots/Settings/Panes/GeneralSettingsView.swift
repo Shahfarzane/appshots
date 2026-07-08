@@ -51,12 +51,14 @@ struct GeneralSettingsView: View {
                             chooseSendTargetApp()
                         } label: {
                             Text(customSendTarget.map(displayName(forBundleID:)) ?? "Other…")
+                                .fontWeight(customSendTarget != nil ? .semibold : .regular)
                                 .frame(height: 32)
                                 .padding(.horizontal, 12)
                         }
-                        .buttonStyle(.luminare(overrideIsHovering: customSendTarget != nil))
+                        .buttonStyle(.luminare(tinted: customSendTarget != nil))
                         .luminareCornerRadius(8)
                         .fixedSize()
+                        .tint(.accentColor)
                     }
                 } label: {
                     Text("Send to")
@@ -102,19 +104,23 @@ struct GeneralSettingsView: View {
         return target
     }
 
-    /// A fixed-choice segment button; the active target renders highlighted,
-    /// matching the MCP pane's scope selector.
+    /// A fixed-choice segment button. The active target renders with a filled
+    /// accent tint (not just a hover highlight) so the current selection is
+    /// unmistakable at rest.
     private func sendTargetButton(_ title: String, target: String?) -> some View {
-        Button {
+        let isSelected = model.postCaptureSendTarget == target && customSendTarget == nil
+        return Button {
             model.postCaptureSendTarget = target
         } label: {
             Text(title)
+                .fontWeight(isSelected ? .semibold : .regular)
                 .frame(height: 32)
                 .padding(.horizontal, 12)
         }
-        .buttonStyle(.luminare(overrideIsHovering: model.postCaptureSendTarget == target && customSendTarget == nil))
+        .buttonStyle(.luminare(tinted: isSelected))
         .luminareCornerRadius(8)
         .fixedSize()
+        .tint(.accentColor)
     }
 
     /// Picks an app bundle from /Applications and stores its bundle identifier.
